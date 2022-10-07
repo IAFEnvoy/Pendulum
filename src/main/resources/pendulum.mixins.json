@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.7",
+  "package": "iafenvoy.pendulum.mixins",
+  "compatibilityLevel": "JAVA_8",
+  "client": [
+    "IMixinMinecraftClient",
+    "MixinCraftingScreen"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "mixins": [
+    "DebugScreenHandler"
+  ]
+}
