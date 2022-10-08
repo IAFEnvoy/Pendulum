@@ -1,9 +1,12 @@
 package iafenvoy.pendulum.interpreter;
 
 import com.google.common.collect.Lists;
-import iafenvoy.pendulum.interpreter.util.BooleanCommandEntry;
-import iafenvoy.pendulum.interpreter.util.CommandEntry;
-import iafenvoy.pendulum.interpreter.util.VoidCommandEntry;
+import iafenvoy.pendulum.interpreter.entry.*;
+import iafenvoy.pendulum.interpreter.util.DataLoader;
+import iafenvoy.pendulum.interpreter.util.entry.BooleanCommandEntry;
+import iafenvoy.pendulum.interpreter.util.entry.CommandEntry;
+import iafenvoy.pendulum.interpreter.util.entry.VoidCommandEntry;
+import iafenvoy.pendulum.utils.ThreadUtils;
 
 import java.util.HashMap;
 import java.util.List;
@@ -24,6 +27,15 @@ public class PendulumInterpreter {
         return interpret(Lists.newArrayList(command));
     }
 
+    public static void init() {
+        register(new CloseCommand());
+        register(new CraftCommand());
+        register(new HotBarCommand());
+        register(new LogCommand());
+        register(new SayCommand());
+        register(new UseCommand());
+    }
+
     public static InterpretResult interpret(List<String> command) {
         if (command.size() == 0) return InterpretResult.NO_COMMAND;
         for (int i = 0; i < command.size(); i++) {
@@ -37,6 +49,7 @@ public class PendulumInterpreter {
                 }
             } else
                 return InterpretResult.COMMAND_NOT_FOUND.setLine(i + 1);
+            ThreadUtils.sleep(DataLoader.sleepDelta);
         }
         return InterpretResult.EMPTY;
     }

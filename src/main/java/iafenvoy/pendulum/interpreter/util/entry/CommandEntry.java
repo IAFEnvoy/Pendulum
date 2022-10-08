@@ -1,4 +1,4 @@
-package iafenvoy.pendulum.interpreter.util;
+package iafenvoy.pendulum.interpreter.util.entry;
 
 import net.minecraft.client.MinecraftClient;
 

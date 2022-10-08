@@ -1,6 +1,6 @@
 package iafenvoy.pendulum.interpreter.entry;
 
-import iafenvoy.pendulum.interpreter.util.VoidCommandEntry;
+import iafenvoy.pendulum.interpreter.util.entry.VoidCommandEntry;
 import net.minecraft.entity.player.PlayerInventory;
 
 public class HotBarCommand implements VoidCommandEntry {

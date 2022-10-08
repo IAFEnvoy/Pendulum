@@ -5,12 +5,9 @@
   "compatibilityLevel": "JAVA_8",
   "client": [
     "IMixinMinecraftClient",
-    "MixinCraftingScreen"
+    "MixinRecipeBookResults"
   ],
   "injectors": {
     "defaultRequire": 1
-  },
-  "mixins": [
-    "DebugScreenHandler"
-  ]
+  }
 }

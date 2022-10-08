@@ -1,6 +1,6 @@
 package iafenvoy.pendulum.interpreter.entry;
 
-import iafenvoy.pendulum.interpreter.util.VoidCommandEntry;
+import iafenvoy.pendulum.interpreter.util.entry.VoidCommandEntry;
 import iafenvoy.pendulum.mixins.IMixinMinecraftClient;
 
 public class UseCommand implements VoidCommandEntry {

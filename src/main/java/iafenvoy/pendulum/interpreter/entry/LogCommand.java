@@ -1,6 +1,6 @@
 package iafenvoy.pendulum.interpreter.entry;
 
-import iafenvoy.pendulum.interpreter.util.VoidCommandEntry;
+import iafenvoy.pendulum.interpreter.util.entry.VoidCommandEntry;
 import net.minecraft.text.Text;
 
 public class LogCommand implements VoidCommandEntry {

@@ -2,15 +2,15 @@ package iafenvoy.pendulum.interpreter.entry;
 
 import iafenvoy.pendulum.interpreter.util.entry.VoidCommandEntry;
 
-public class SayCommand implements VoidCommandEntry {
+public class CloseCommand implements VoidCommandEntry {
     @Override
     public String getPrefix() {
-        return "say";
+        return "close";
     }
 
     @Override
     public void execute(String command) {
-        assert client.player != null;
-        client.player.sendChatMessage(command);
+        if (client.currentScreen != null)
+            client.currentScreen.onClose();
     }
 }

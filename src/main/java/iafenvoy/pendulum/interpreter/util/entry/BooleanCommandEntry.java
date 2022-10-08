@@ -1,6 +1,4 @@
-package iafenvoy.pendulum.interpreter.util;
-
-import net.minecraft.client.MinecraftClient;
+package iafenvoy.pendulum.interpreter.util.entry;
 
 public interface BooleanCommandEntry extends CommandEntry{
 
