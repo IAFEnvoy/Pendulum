@@ -12,12 +12,10 @@ import net.minecraft.text.Text;
 public class Pendulum implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
-        PendulumInterpreter.init();
-        PendulumExecutor.start();
         ClientCommandManager.DISPATCHER.register(ClientCommandManager.literal("pendulum").then(ClientCommandManager.argument("cmd", StringArgumentType.greedyString()).executes(ctx -> {
             new Thread(() -> {
                 String command = StringArgumentType.getString(ctx, "cmd");
-                PendulumInterpreter.InterpretResult error = PendulumInterpreter.interpret(command.split(";"));
+                PendulumInterpreter.InterpretResult error = new PendulumInterpreter().interpret(command.split(";"));
                 if (error != PendulumInterpreter.InterpretResult.EMPTY) {
                     assert MinecraftClient.getInstance().player != null;
                     MinecraftClient.getInstance().player.sendMessage(Text.of(error.getErrorMessage()), false);
