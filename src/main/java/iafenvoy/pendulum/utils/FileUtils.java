@@ -2,11 +2,12 @@ package iafenvoy.pendulum.utils;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 
 public class FileUtils {
 
     public static String readFile(String path) throws IOException {
-        InputStream inputStream = Files.newInputStream(new File(path).toPath());
+        InputStream inputStream = Files.newInputStream(Paths.get(path));
         StringBuilder stringBuilder = new StringBuilder();
         int i;
         while ((i = inputStream.read()) != -1)
