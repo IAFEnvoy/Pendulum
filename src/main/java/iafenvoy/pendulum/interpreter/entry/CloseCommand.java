@@ -11,6 +11,6 @@ public class CloseCommand implements VoidCommandEntry {
     @Override
     public void execute(String command) {
         if (client.currentScreen != null)
-            client.currentScreen.removed();
+            client.currentScreen.keyPressed(256, 0, 0);
     }
 }

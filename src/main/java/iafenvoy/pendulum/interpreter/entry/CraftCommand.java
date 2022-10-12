@@ -20,14 +20,6 @@ public class CraftCommand implements VoidCommandEntry {
         return "craft";
     }
 
-    public static int getItemLocation(PlayerInventory inventory, Item item) {
-        if (item == Items.AIR) return -1;
-        for (int i = 0; i < inventory.size(); i++)
-            if (inventory.getStack(i).getItem() == item)
-                return i;
-        return -1;
-    }
-
     @Override
     public void execute(String command) {
         List<String> items = Lists.newArrayList(command.split(" "));

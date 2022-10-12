@@ -9,6 +9,8 @@ import iafenvoy.pendulum.interpreter.util.entry.VoidCommandEntry;
 import iafenvoy.pendulum.utils.FileUtils;
 import iafenvoy.pendulum.utils.NumberUtils;
 import iafenvoy.pendulum.utils.ThreadUtils;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.text.Text;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,7 +30,7 @@ public class PendulumInterpreter {
     }
 
     public static InterpretResult interpret(String... command) {
-        return interpret(Lists.newArrayList(command), 0, "");
+        return interpret(Lists.newArrayList(command));
     }
 
     public static void init() {
@@ -38,21 +40,23 @@ public class PendulumInterpreter {
         register(new LogCommand());
         register(new SayCommand());
         register(new UseCommand());
+
+        register(new HasCommand());
     }
 
-    public static InterpretResult interpret(List<String> command, int startLine, String retString) {
+    public static InterpretResult interpret(List<String> command) {
         if (command.size() == 0) return InterpretResult.NO_COMMAND;
-        for (int i = startLine; i < command.size(); i++) {
-            String cmd = rebuildCommand(command.get(i));
+        command = rebuildCommand(command);
+        for (int i = 0; i < command.size(); i++) {
+            String cmd = command.get(i);
             if (cmd.isEmpty()) continue;
-            if (cmd.equals(retString)) return InterpretResult.EMPTY.setLine(i);
             String[] commandP = cmd.split(" ");
             String prefix = commandP[0];
             if (prefix.equals("file")) {//file载入文件语句
                 try {
                     if (commandP.length <= 1) return InterpretResult.TOO_FEW_ARGUMENTS.setLine(i + 1);
-                    String fileCmd = FileUtils.readFile("./pendulum/" + commandP[1] + ".pendulum");
-                    InterpretResult result = interpret(fileCmd.replace("\r", "").replace("\n", ";").split(";"));
+                    String fileCmd = FileUtils.readByLines("./pendulum/" + commandP[1] + ".pendulum");
+                    InterpretResult result = interpret(fileCmd.replace("\n", ";").split(";"));
                     if (result != InterpretResult.EMPTY)
                         return result;
                 } catch (IOException e) {
@@ -62,28 +66,42 @@ public class PendulumInterpreter {
             } else if (prefix.equals("for")) {//for语句
                 if (commandP.length == 1) return InterpretResult.TOO_FEW_ARGUMENTS.setLine(i + 1);
                 int times = NumberUtils.parseInt(commandP[1]);
-                int nextCmd = -1;
+                int endIndex = getEndIndex(command, i, "for", "fend");
+                if (endIndex == -1) return InterpretResult.END_FLAG_NOT_FOUND;
                 for (int j = 0; j < times; j++) {
-                    InterpretResult result = interpret(command, i + 1, "fend");
-                    if (!result.equals(InterpretResult.EMPTY))
+                    InterpretResult result = interpret(command.subList(i + 1, endIndex));
+                    if (result != InterpretResult.EMPTY)
                         return result;
-                    nextCmd = result.getLine();
                 }
-                i = nextCmd;
+                i = endIndex;
             } else if (voidCommand.containsKey(prefix)) {//正常语句
-                VoidCommandEntry entry = voidCommand.get(prefix);
                 try {
+                    VoidCommandEntry entry = voidCommand.get(prefix);
                     entry.execute(removePrefix(cmd, entry));
                 } catch (Exception e) {
-                    return new InterpretResult(e.getMessage()).setLine(i + 1);
+                    return new InterpretResult(e.getMessage());
+                }
+            } else if (booleanCommand.containsKey(prefix)) {//boolean语句
+                try {
+                    BooleanCommandEntry entry = booleanCommand.get(prefix);
+                    boolean ret = entry.execute(removePrefix(cmd, entry));
+                    assert MinecraftClient.getInstance().player != null;
+                    MinecraftClient.getInstance().player.sendMessage(Text.of(String.valueOf(ret)), false);
+                } catch (Exception e) {
+                    return new InterpretResult(e.getMessage());
                 }
             } else
                 return InterpretResult.COMMAND_NOT_FOUND.setLine(i + 1);
             ThreadUtils.sleep(DataLoader.sleepDelta);
         }
-        if (!retString.isEmpty())
-            return new InterpretResult("No fend found!");
         return InterpretResult.EMPTY;
+    }
+
+    private static List<String> rebuildCommand(List<String> cmd) {
+        List<String> cmd2 = new ArrayList<>();
+        for (String s : cmd)
+            cmd2.add(rebuildCommand(s));
+        return cmd2;
     }
 
     private static String removePrefix(String command, CommandEntry entry) {
@@ -99,11 +117,26 @@ public class PendulumInterpreter {
         return String.join(" ", l);
     }
 
+    private static int getEndIndex(List<String> command, int startIndex, String start, String end) {
+        int stack = 0;
+        for (int i = startIndex + 1; i < command.size(); i++) {
+            String[] s = command.get(i).split(" ");
+            if (s.length == 0) continue;
+            String prefix = s[0];
+            if (prefix.equals(start)) stack++;
+            else if (prefix.equals(end))
+                if (stack == 0) return i;
+                else stack--;
+        }
+        return -1;
+    }
+
     public static class InterpretResult {
         public static final InterpretResult EMPTY = new InterpretResult(null);
         public static final InterpretResult NO_COMMAND = new InterpretResult("There is no command to execute!");
         public static final InterpretResult COMMAND_NOT_FOUND = new InterpretResult("There is no such command!");
         public static final InterpretResult TOO_FEW_ARGUMENTS = new InterpretResult("There is too few arguments!");
+        public static final InterpretResult END_FLAG_NOT_FOUND = new InterpretResult("End flag not found!");
         private final String errorMessage;
         private int line;
 

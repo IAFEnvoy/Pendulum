@@ -3,7 +3,7 @@
   "id": "pendulum",
   "version": "1.0.0",
   "name": "Pendulum",
-  "description": "",
+  "description": "The interpreter for Pendulum programming language.",
   "authors": [
     "IAFEnvoy"
   ],
