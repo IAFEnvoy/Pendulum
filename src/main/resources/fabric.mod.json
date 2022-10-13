@@ -13,7 +13,7 @@
     "client": [
       "iafenvoy.pendulum.Pendulum"
     ],
-    "modmenu":[
+    "modmenu": [
       "iafenvoy.pendulum.compat.ModMenu"
     ]
   },

@@ -18,22 +18,10 @@ import java.util.HashMap;
 import java.util.List;
 
 public class PendulumInterpreter {
-    private static final HashMap<String, VoidCommandEntry> voidCommand = new HashMap<>();
-    private static final HashMap<String, BooleanCommandEntry> booleanCommand = new HashMap<>();
+    private final HashMap<String, VoidCommandEntry> voidCommand = new HashMap<>();
+    private final HashMap<String, BooleanCommandEntry> booleanCommand = new HashMap<>();
 
-    public static void register(VoidCommandEntry entry) {
-        voidCommand.put(entry.getPrefix(), entry);
-    }
-
-    public static void register(BooleanCommandEntry entry) {
-        booleanCommand.put(entry.getPrefix(), entry);
-    }
-
-    public static InterpretResult interpret(String... command) {
-        return interpret(Lists.newArrayList(command));
-    }
-
-    public static void init() {
+    public PendulumInterpreter() {
         register(new CloseCommand());
         register(new CraftCommand());
         register(new HotBarCommand());
@@ -42,59 +30,6 @@ public class PendulumInterpreter {
         register(new UseCommand());
 
         register(new HasCommand());
-    }
-
-    public static InterpretResult interpret(List<String> command) {
-        if (command.size() == 0) return InterpretResult.NO_COMMAND;
-        command = rebuildCommand(command);
-        for (int i = 0; i < command.size(); i++) {
-            String cmd = command.get(i);
-            if (cmd.isEmpty()) continue;
-            String[] commandP = cmd.split(" ");
-            String prefix = commandP[0];
-            if (prefix.equals("file")) {//file载入文件语句
-                try {
-                    if (commandP.length <= 1) return InterpretResult.TOO_FEW_ARGUMENTS.setLine(i + 1);
-                    String fileCmd = FileUtils.readByLines("./pendulum/" + commandP[1] + ".pendulum");
-                    InterpretResult result = interpret(fileCmd.replace("\n", ";").split(";"));
-                    if (result != InterpretResult.EMPTY)
-                        return result;
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    return new InterpretResult("The file cannot be read!").setLine(i + 1);
-                }
-            } else if (prefix.equals("for")) {//for语句
-                if (commandP.length == 1) return InterpretResult.TOO_FEW_ARGUMENTS.setLine(i + 1);
-                int times = NumberUtils.parseInt(commandP[1]);
-                int endIndex = getEndIndex(command, i, "for", "fend");
-                if (endIndex == -1) return InterpretResult.END_FLAG_NOT_FOUND;
-                for (int j = 0; j < times; j++) {
-                    InterpretResult result = interpret(command.subList(i + 1, endIndex));
-                    if (result != InterpretResult.EMPTY)
-                        return result;
-                }
-                i = endIndex;
-            } else if (voidCommand.containsKey(prefix)) {//正常语句
-                try {
-                    VoidCommandEntry entry = voidCommand.get(prefix);
-                    entry.execute(removePrefix(cmd, entry));
-                } catch (Exception e) {
-                    return new InterpretResult(e.getMessage());
-                }
-            } else if (booleanCommand.containsKey(prefix)) {//boolean语句
-                try {
-                    BooleanCommandEntry entry = booleanCommand.get(prefix);
-                    boolean ret = entry.execute(removePrefix(cmd, entry));
-                    assert MinecraftClient.getInstance().player != null;
-                    MinecraftClient.getInstance().player.sendMessage(Text.of(String.valueOf(ret)), false);
-                } catch (Exception e) {
-                    return new InterpretResult(e.getMessage());
-                }
-            } else
-                return InterpretResult.COMMAND_NOT_FOUND.setLine(i + 1);
-            ThreadUtils.sleep(DataLoader.sleepDelta);
-        }
-        return InterpretResult.EMPTY;
     }
 
     private static List<String> rebuildCommand(List<String> cmd) {
@@ -129,6 +64,71 @@ public class PendulumInterpreter {
                 else stack--;
         }
         return -1;
+    }
+
+    public void register(VoidCommandEntry entry) {
+        voidCommand.put(entry.getPrefix(), entry);
+    }
+
+    public void register(BooleanCommandEntry entry) {
+        booleanCommand.put(entry.getPrefix(), entry);
+    }
+
+    public InterpretResult interpret(String... command) {
+        return interpret(Lists.newArrayList(command));
+    }
+
+    public InterpretResult interpret(List<String> command) {
+        if (command.size() == 0) return InterpretResult.NO_COMMAND;
+        command = rebuildCommand(command);
+        for (int i = 0; i < command.size(); i++) {
+            String cmd = command.get(i);
+            if (cmd.isEmpty()) continue;
+            String[] commandP = cmd.split(" ");
+            String prefix = commandP[0];
+            if (prefix.equals("file")) {//file载入文件语句
+                try {
+                    if (commandP.length <= 1) return InterpretResult.TOO_FEW_ARGUMENTS.setLine(i + 1);
+                    String fileCmd = FileUtils.readByLines("./pendulum/" + commandP[1] + ".pendulum");
+                    InterpretResult result = interpret(fileCmd.replace("\n", ";").split(";"));
+                    if (result != InterpretResult.EMPTY)
+                        return result;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return new InterpretResult("The file cannot be read!").setLine(i + 1);
+                }
+            } else if (prefix.equals("for")) {//for语句
+                if (commandP.length == 1) return InterpretResult.TOO_FEW_ARGUMENTS.setLine(i + 1);
+                int times = NumberUtils.parseInt(commandP[1]);
+                int endIndex = getEndIndex(command, i, "for", "endfor");
+                if (endIndex == -1) return InterpretResult.END_FLAG_NOT_FOUND;
+                for (int j = 0; j < times; j++) {
+                    InterpretResult result = interpret(command.subList(i + 1, endIndex));
+                    if (result != InterpretResult.EMPTY)
+                        return result;
+                }
+                i = endIndex;
+            } else if (voidCommand.containsKey(prefix)) {//正常语句
+                try {
+                    VoidCommandEntry entry = voidCommand.get(prefix);
+                    entry.execute(this, removePrefix(cmd, entry));
+                } catch (Exception e) {
+                    return new InterpretResult(e.getMessage());
+                }
+            } else if (booleanCommand.containsKey(prefix)) {//boolean语句
+                try {
+                    BooleanCommandEntry entry = booleanCommand.get(prefix);
+                    boolean ret = entry.execute(this, removePrefix(cmd, entry));
+                    assert MinecraftClient.getInstance().player != null;
+                    MinecraftClient.getInstance().player.sendMessage(Text.of(String.valueOf(ret)), false);
+                } catch (Exception e) {
+                    return new InterpretResult(e.getMessage());
+                }
+            } else
+                return InterpretResult.COMMAND_NOT_FOUND.setLine(i + 1);
+            ThreadUtils.sleep(DataLoader.sleepDelta);
+        }
+        return InterpretResult.EMPTY;
     }
 
     public static class InterpretResult {

@@ -1,6 +1,8 @@
 package iafenvoy.pendulum.interpreter.util.entry;
 
-public interface BooleanCommandEntry extends CommandEntry{
+import iafenvoy.pendulum.interpreter.PendulumInterpreter;
 
-    boolean execute(String command);
+public interface BooleanCommandEntry extends CommandEntry {
+
+    boolean execute(PendulumInterpreter interpreter, String command);
 }

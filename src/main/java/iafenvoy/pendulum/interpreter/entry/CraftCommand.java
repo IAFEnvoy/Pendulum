@@ -1,11 +1,11 @@
 package iafenvoy.pendulum.interpreter.entry;
 
 import com.google.common.collect.Lists;
+import iafenvoy.pendulum.interpreter.PendulumInterpreter;
 import iafenvoy.pendulum.interpreter.util.DataLoader;
 import iafenvoy.pendulum.interpreter.util.entry.VoidCommandEntry;
 import iafenvoy.pendulum.utils.ItemUtils;
 import iafenvoy.pendulum.utils.ThreadUtils;
-import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.Items;
 import net.minecraft.recipe.Recipe;
@@ -21,7 +21,7 @@ public class CraftCommand implements VoidCommandEntry {
     }
 
     @Override
-    public void execute(String command) {
+    public void execute(PendulumInterpreter interpreter, String command) {
         List<String> items = Lists.newArrayList(command.split(" "));
         if (items.size() != 1) throw new IllegalArgumentException("craft command should have 1 arguments");
         Item item = ItemUtils.GetItemFromName(items.get(0));
