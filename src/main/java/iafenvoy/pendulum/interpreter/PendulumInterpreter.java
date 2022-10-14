@@ -3,19 +3,19 @@ package iafenvoy.pendulum.interpreter;
 import com.google.common.collect.Lists;
 import iafenvoy.pendulum.interpreter.entry.*;
 import iafenvoy.pendulum.interpreter.util.DataLoader;
+import iafenvoy.pendulum.interpreter.util.ExpressionUtils;
 import iafenvoy.pendulum.interpreter.util.entry.BooleanCommandEntry;
 import iafenvoy.pendulum.interpreter.util.entry.CommandEntry;
 import iafenvoy.pendulum.interpreter.util.entry.VoidCommandEntry;
 import iafenvoy.pendulum.utils.FileUtils;
 import iafenvoy.pendulum.utils.NumberUtils;
 import iafenvoy.pendulum.utils.ThreadUtils;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.text.Text;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Stack;
 
 public class PendulumInterpreter {
     private final HashMap<String, VoidCommandEntry> voidCommand = new HashMap<>();
@@ -66,6 +66,30 @@ public class PendulumInterpreter {
         return -1;
     }
 
+    public boolean parseSuffixList(List<String> cmd) {
+        Stack<Boolean> stack = new Stack<>();
+        for (String s : cmd) {
+            if (ExpressionUtils.isOperator(s)) {
+                if (s.equals("and")) {
+                    boolean b1 = stack.pop(), b2 = stack.pop();
+                    stack.push(b1 & b2);
+                }
+                if (s.equals("or")) {
+                    boolean b1 = stack.pop(), b2 = stack.pop();
+                    stack.push(b1 | b2);
+                }
+                if (s.equals("not")) {
+                    boolean b1 = stack.pop();
+                    stack.push(!b1);
+                }
+            }
+            else{
+                //parse boolean command
+            }
+        }
+        return stack.peek();
+    }
+
     public void register(VoidCommandEntry entry) {
         voidCommand.put(entry.getPrefix(), entry);
     }
@@ -108,6 +132,25 @@ public class PendulumInterpreter {
                         return result;
                 }
                 i = endIndex;
+//            } else if (prefix.equals("while")) {
+//                String expression = removePrefix(cmd, () -> "while");
+//                String[] words = expression.split(" ");
+//                List<String> list = new ArrayList<>(), temp = new ArrayList<>();
+//                for (String s : words)
+//                    if (ExpressionUtils.isOperator(s) || s.equals("(") || s.equals(")")) {
+//                        list.add(String.join(" ", temp));
+//                        list.add(s);
+//                        temp.clear();
+//                    } else temp.add(s);
+//                List<String> expressions = ExpressionUtils.middleToSuffix(list);
+//                int endIndex = getEndIndex(command, i, "while", "endwhile");
+//                if (endIndex == -1) return InterpretResult.END_FLAG_NOT_FOUND;
+//                while (parseSuffixList(expressions)) {
+//                    InterpretResult result = interpret(command.subList(i + 1, endIndex));
+//                    if (result != InterpretResult.EMPTY)
+//                        return result;
+//                }
+//                i = endIndex;
             } else if (voidCommand.containsKey(prefix)) {//正常语句
                 try {
                     VoidCommandEntry entry = voidCommand.get(prefix);
@@ -115,17 +158,8 @@ public class PendulumInterpreter {
                 } catch (Exception e) {
                     return new InterpretResult(e.getMessage());
                 }
-            } else if (booleanCommand.containsKey(prefix)) {//boolean语句
-                try {
-                    BooleanCommandEntry entry = booleanCommand.get(prefix);
-                    boolean ret = entry.execute(this, removePrefix(cmd, entry));
-                    assert MinecraftClient.getInstance().player != null;
-                    MinecraftClient.getInstance().player.sendMessage(Text.of(String.valueOf(ret)), false);
-                } catch (Exception e) {
-                    return new InterpretResult(e.getMessage());
-                }
             } else
-                return InterpretResult.COMMAND_NOT_FOUND.setLine(i + 1);
+                return InterpretResult.COMMAND_NOT_FOUND;
             ThreadUtils.sleep(DataLoader.sleepDelta);
         }
         return InterpretResult.EMPTY;
