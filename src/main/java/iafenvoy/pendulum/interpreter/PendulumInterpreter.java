@@ -2,6 +2,8 @@ package iafenvoy.pendulum.interpreter;
 
 import iafenvoy.pendulum.interpreter.util.DataLoader;
 import iafenvoy.pendulum.interpreter.util.ExpressionUtils;
+import iafenvoy.pendulum.interpreter.util.InterpretResult;
+import iafenvoy.pendulum.interpreter.util.OptionalResult;
 import iafenvoy.pendulum.interpreter.util.entry.BooleanCommandEntry;
 import iafenvoy.pendulum.interpreter.util.entry.CommandEntry;
 import iafenvoy.pendulum.interpreter.util.entry.VoidCommandEntry;
@@ -19,12 +21,14 @@ public class PendulumInterpreter {
     public PendulumInterpreter() {
         register(new BooleanCommandEntry() {
             @Override
-            public boolean execute(PendulumInterpreter interpreter, String command) {
+            public OptionalResult<Boolean> execute(PendulumInterpreter interpreter, String command) {
                 String[] commandP = command.split(" ");
                 String prefix = commandP[0];
                 if (booleanCommand.containsKey(prefix)) {
                     BooleanCommandEntry entry = booleanCommand.get(prefix);
-                    return !entry.execute(interpreter, removePrefix(command, entry));
+                    OptionalResult<Boolean> optionalResult = entry.execute(interpreter, removePrefix(command, entry));
+                    optionalResult.setReturnValue(!optionalResult.getReturnValue());
+                    return optionalResult;
                 } else throw new IllegalArgumentException("there is no such command!");
             }
 
@@ -83,7 +87,7 @@ public class PendulumInterpreter {
         return -1;
     }
 
-    private boolean parseSuffixList(List<String> cmd) {
+    private OptionalResult<Boolean> parseSuffixList(List<String> cmd) {
         Stack<Boolean> stack = new Stack<>();
         for (String s : cmd) {
             if (s.equals("true")) stack.push(true);
@@ -103,12 +107,13 @@ public class PendulumInterpreter {
                 String prefix = commandP[0];
                 if (booleanCommand.containsKey(prefix)) {
                     BooleanCommandEntry entry = booleanCommand.get(prefix);
-                    boolean result = entry.execute(this, removePrefix(s, entry));
-                    stack.push(result);
+                    OptionalResult<Boolean> result = entry.execute(this, removePrefix(s, entry));
+                    if (result.hasError()) return result;
+                    stack.push(result.getReturnValue());
                 } else throw new IllegalArgumentException("there is no such command!");
             }
         }
-        return stack.peek();
+        return new OptionalResult<>(stack.peek());
     }
 
     public void register(VoidCommandEntry entry) {
@@ -119,12 +124,12 @@ public class PendulumInterpreter {
         booleanCommand.put(entry.getPrefix(), entry);
     }
 
-    public InterpretResult interpret(String... command) {
+    public OptionalResult<Object> interpret(String... command) {
         return interpret(Arrays.asList(command));
     }
 
-    public InterpretResult interpret(List<String> command) {
-        if (command.size() == 0) return InterpretResult.NO_COMMAND;
+    public OptionalResult<Object> interpret(List<String> command) {
+        if (command.size() == 0) return new OptionalResult<>(InterpretResult.NO_COMMAND);
         command = rebuildCommand(command);
         for (int i = 0; i < command.size(); i++) {
             String cmd = command.get(i);
@@ -133,56 +138,56 @@ public class PendulumInterpreter {
             String prefix = commandP[0];
             if (prefix.equals("file")) {//file载入文件语句
                 try {
-                    if (commandP.length <= 1) return InterpretResult.TOO_FEW_ARGUMENTS;
+                    if (commandP.length <= 1) return new OptionalResult<>(InterpretResult.TOO_FEW_ARGUMENTS);
                     String fileCmd = FileUtils.readByLines("./pendulum/" + commandP[1] + ".pendulum");
-                    InterpretResult result = interpret(fileCmd.replace("\n", ";").split(";"));
-                    if (result != InterpretResult.EMPTY)
+                    OptionalResult<Object> result = interpret(fileCmd.replace("\n", ";").split(";"));
+                    if(result.hasError())
                         return result;
                 } catch (IOException e) {
                     e.printStackTrace();
-                    return new InterpretResult("The file cannot be read!");
+                    return new OptionalResult<>("The file cannot be read!");
                 }
             } else if (prefix.equals("for")) {//for语句
-                if (commandP.length == 1) return InterpretResult.TOO_FEW_ARGUMENTS;
+                if (commandP.length == 1) return new OptionalResult<>(InterpretResult.TOO_FEW_ARGUMENTS);
                 int times = NumberUtils.parseInt(commandP[1]);
                 int endIndex = getEndIndex(command, i, "for", "endfor");
-                if (endIndex == -1) return InterpretResult.END_FLAG_NOT_FOUND;
+                if (endIndex == -1) return new OptionalResult<>(InterpretResult.END_FLAG_NOT_FOUND);
                 for (int j = 0; j < times; j++) {
-                    InterpretResult result = interpret(command.subList(i + 1, endIndex));
-                    if (result != InterpretResult.EMPTY)
+                    OptionalResult<Object> result = interpret(command.subList(i + 1, endIndex));
+                    if (result.hasError())
                         return result;
                 }
                 i = endIndex;
             } else if (prefix.equals("while")) {
                 List<String> expressions = ExpressionUtils.middleToSuffix(removePrefix(cmd, () -> "while"));
                 int endIndex = getEndIndex(command, i, "while", "endwhile");
-                if (endIndex == -1) return InterpretResult.END_FLAG_NOT_FOUND;
-                try {
-                    while (parseSuffixList(expressions)) {
-                        InterpretResult result = interpret(command.subList(i + 1, endIndex));
-                        if (result != InterpretResult.EMPTY)
-                            return result;
-                    }
-                } catch (IllegalArgumentException e) {
-                    return InterpretResult.COMMAND_NOT_FOUND;
+                if (endIndex == -1) return new OptionalResult<>(InterpretResult.END_FLAG_NOT_FOUND);
+                while (true) {
+                    OptionalResult<Boolean> optionalResult = parseSuffixList(expressions);
+                    if (optionalResult.hasError()) return new OptionalResult<>(optionalResult.getResult());
+                    if (!optionalResult.getReturnValue()) break;
+                    OptionalResult<Object> result = interpret(command.subList(i + 1, endIndex));
+                    if (result.hasError())
+                        return result;
                 }
                 i = endIndex;
             } else if (prefix.equals("if")) {
                 List<String> expressions = ExpressionUtils.middleToSuffix(removePrefix(cmd, () -> "if"));
-                boolean ifResult = parseSuffixList(expressions);
+                OptionalResult<Boolean> ifResult = parseSuffixList(expressions);
+                if (ifResult.hasError()) return new OptionalResult<>(ifResult.getResult());
                 int endIndex = getEndIndex(command, i, "if", "endif");
-                if (endIndex == -1) return InterpretResult.END_FLAG_NOT_FOUND;
+                if (endIndex == -1) return new OptionalResult<>(InterpretResult.END_FLAG_NOT_FOUND);
                 List<String> ifObject = command.subList(i + 1, endIndex);
                 int elseLocation = getElseLocation(ifObject);
-                InterpretResult result = InterpretResult.EMPTY;
+                OptionalResult<Object> result = new OptionalResult<>();
                 if (elseLocation == -1) {
-                    if (ifResult)
+                    if (ifResult.getReturnValue())
                         result = interpret(ifObject);
                 } else {
-                    if (ifResult) result = interpret(ifObject.subList(0, elseLocation));
+                    if (ifResult.getReturnValue()) result = interpret(ifObject.subList(0, elseLocation));
                     else result = interpret(ifObject.subList(elseLocation + 1, ifObject.size()));
                 }
-                if (result != InterpretResult.EMPTY)
+                if (result.hasError())
                     return result;
                 i = endIndex;
             } else if (voidCommand.containsKey(prefix)) {//正常语句
@@ -190,37 +195,13 @@ public class PendulumInterpreter {
                     VoidCommandEntry entry = voidCommand.get(prefix);
                     entry.execute(this, removePrefix(cmd, entry));
                 } catch (Exception e) {
-                    return new InterpretResult(e.getMessage());
+                    return new OptionalResult<>(e.getMessage());
                 }
             } else
-                return InterpretResult.COMMAND_NOT_FOUND;
+                return new OptionalResult<>(InterpretResult.COMMAND_NOT_FOUND);
             ThreadUtils.sleep(DataLoader.sleepDelta);
         }
-        return InterpretResult.EMPTY;
+        return new OptionalResult<>();
     }
 
-    public static class InterpretResult {
-        public static final InterpretResult EMPTY = new InterpretResult(null);
-        public static final InterpretResult NO_COMMAND = new InterpretResult("There is no command to execute!");
-        public static final InterpretResult COMMAND_NOT_FOUND = new InterpretResult("There is no such command!");
-        public static final InterpretResult TOO_FEW_ARGUMENTS = new InterpretResult("There is too few arguments!");
-        public static final InterpretResult END_FLAG_NOT_FOUND = new InterpretResult("End flag not found!");
-        private final String errorMessage;
-
-        public InterpretResult(String errorMessage) {
-            this.errorMessage = errorMessage;
-        }
-
-        public String getErrorMessage() {
-            return errorMessage;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof InterpretResult)
-                if (((InterpretResult) obj).errorMessage == null && this.errorMessage == null) return true;
-                else return this.errorMessage.equals(((InterpretResult) obj).errorMessage);
-            return false;
-        }
-    }
 }

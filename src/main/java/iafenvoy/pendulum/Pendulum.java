@@ -4,6 +4,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import iafenvoy.pendulum.interpreter.CoreCommandRegister;
 import iafenvoy.pendulum.interpreter.PendulumInterpreter;
 import iafenvoy.pendulum.interpreter.util.DataLoader;
+import iafenvoy.pendulum.interpreter.util.OptionalResult;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v1.ClientCommandManager;
 import net.minecraft.client.MinecraftClient;
@@ -16,10 +17,10 @@ public class Pendulum implements ClientModInitializer {
         ClientCommandManager.DISPATCHER.register(ClientCommandManager.literal("pendulum").then(ClientCommandManager.argument("cmd", StringArgumentType.greedyString()).executes(ctx -> {
             new Thread(() -> {
                 String command = StringArgumentType.getString(ctx, "cmd");
-                PendulumInterpreter.InterpretResult error = new PendulumInterpreter().interpret(command.split(";"));
-                if (error != PendulumInterpreter.InterpretResult.EMPTY) {
+                OptionalResult<Object> error = new PendulumInterpreter().interpret(command.split(";"));
+                if (error.hasError()) {
                     assert MinecraftClient.getInstance().player != null;
-                    MinecraftClient.getInstance().player.sendMessage(Text.of(error.getErrorMessage()), false);
+                    MinecraftClient.getInstance().player.sendMessage(Text.of(error.getResult().getErrorMessage()), false);
                 }
             }).start();
             return 0;
