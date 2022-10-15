@@ -7,6 +7,21 @@ import java.util.List;
 import java.util.Stack;
 
 public class ExpressionUtils {
+    public static List<String> middleToSuffix(String expression) {
+        String[] words = expression.split(" ");
+        List<String> list = new ArrayList<>(), temp = new ArrayList<>();
+        for (String s : words) {
+            if (s.isEmpty()) continue;
+            if (ExpressionUtils.isOperator(s) || s.equals("(") || s.equals(")")) {
+                list.add(String.join(" ", temp));
+                list.add(s);
+                temp.clear();
+            } else temp.add(s);
+        }
+        if (!temp.isEmpty()) list.add(String.join(" ", temp));
+        return middleToSuffix(list);
+    }
+
     public static List<String> middleToSuffix(List<String> expression) {
         Stack<String> opStack = new Stack<>();
         List<String> suffixList = new ArrayList<>();

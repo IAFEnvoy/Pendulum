@@ -43,9 +43,9 @@ public class PendulumInterpreter {
         return cmd2;
     }
 
-    private static String removePrefix(String command, CommandEntry entry) {
-        if (command.length() <= entry.getPrefix().length()) return "";
-        return command.substring(entry.getPrefix().length() + 1);
+    private static String removePrefix(String cmd, CommandEntry entry) {
+        if (cmd.length() <= entry.getPrefix().length()) return "";
+        return cmd.substring(entry.getPrefix().length() + 1);
     }
 
     private static String rebuildCommand(String cmd) {
@@ -56,10 +56,10 @@ public class PendulumInterpreter {
         return String.join(" ", l);
     }
 
-    private static int getEndIndex(List<String> command, int startIndex, String start, String end) {
+    private static int getEndIndex(List<String> cmd, int startIndex, String start, String end) {
         int stack = 0;
-        for (int i = startIndex + 1; i < command.size(); i++) {
-            String[] s = command.get(i).split(" ");
+        for (int i = startIndex + 1; i < cmd.size(); i++) {
+            String[] s = cmd.get(i).split(" ");
             if (s.length == 0) continue;
             String prefix = s[0];
             if (prefix.equals(start)) stack++;
@@ -70,10 +70,25 @@ public class PendulumInterpreter {
         return -1;
     }
 
+    private static int getElseLocation(List<String> cmd) {
+        int stack = 0;
+        for (int i = 0; i < cmd.size(); i++) {
+            String[] s = cmd.get(i).split(" ");
+            if (s.length == 0) continue;
+            String prefix = s[0];
+            if (prefix.equals("if")) stack++;
+            if (prefix.equals("endif")) stack--;
+            if (prefix.equals("else") && stack == 0) return i;
+        }
+        return -1;
+    }
+
     private boolean parseSuffixList(List<String> cmd) {
         Stack<Boolean> stack = new Stack<>();
         for (String s : cmd) {
-            if (ExpressionUtils.isOperator(s)) {
+            if (s.equals("true")) stack.push(true);
+            else if (s.equals("false")) stack.push(false);
+            else if (ExpressionUtils.isOperator(s)) {
                 if (s.equals("and")) {
                     boolean b1 = stack.pop(), b2 = stack.pop();
                     stack.push(b1 & b2);
@@ -139,19 +154,7 @@ public class PendulumInterpreter {
                 }
                 i = endIndex;
             } else if (prefix.equals("while")) {
-                String expression = removePrefix(cmd, () -> "while");
-                String[] words = expression.split(" ");
-                List<String> list = new ArrayList<>(), temp = new ArrayList<>();
-                for (String s : words) {
-                    if (s.isEmpty()) continue;
-                    if (ExpressionUtils.isOperator(s) || s.equals("(") || s.equals(")")) {
-                        list.add(String.join(" ", temp));
-                        list.add(s);
-                        temp.clear();
-                    } else temp.add(s);
-                }
-                if (!temp.isEmpty()) list.add(String.join(" ", temp));
-                List<String> expressions = ExpressionUtils.middleToSuffix(list);
+                List<String> expressions = ExpressionUtils.middleToSuffix(removePrefix(cmd, () -> "while"));
                 int endIndex = getEndIndex(command, i, "while", "endwhile");
                 if (endIndex == -1) return InterpretResult.END_FLAG_NOT_FOUND;
                 try {
@@ -163,6 +166,24 @@ public class PendulumInterpreter {
                 } catch (IllegalArgumentException e) {
                     return InterpretResult.COMMAND_NOT_FOUND;
                 }
+                i = endIndex;
+            } else if (prefix.equals("if")) {
+                List<String> expressions = ExpressionUtils.middleToSuffix(removePrefix(cmd, () -> "if"));
+                boolean ifResult = parseSuffixList(expressions);
+                int endIndex = getEndIndex(command, i, "if", "endif");
+                if (endIndex == -1) return InterpretResult.END_FLAG_NOT_FOUND;
+                List<String> ifObject = command.subList(i + 1, endIndex);
+                int elseLocation = getElseLocation(ifObject);
+                InterpretResult result = InterpretResult.EMPTY;
+                if (elseLocation == -1) {
+                    if (ifResult)
+                        result = interpret(ifObject);
+                } else {
+                    if (ifResult) result = interpret(ifObject.subList(0, elseLocation));
+                    else result = interpret(ifObject.subList(elseLocation + 1, ifObject.size()));
+                }
+                if (result != InterpretResult.EMPTY)
+                    return result;
                 i = endIndex;
             } else if (voidCommand.containsKey(prefix)) {//正常语句
                 try {
