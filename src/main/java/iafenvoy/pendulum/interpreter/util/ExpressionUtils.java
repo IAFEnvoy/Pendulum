@@ -35,11 +35,10 @@ public class ExpressionUtils {
     }
 
     public static boolean isOperator(String s) {
-        return Lists.newArrayList("not", "and", "or").contains(s);
+        return Lists.newArrayList("and", "or").contains(s);
     }
 
     private static int priority(String op) {
-        if (op.equals("not")) return 3;
         if (op.equals("and")) return 2;
         if (op.equals("or")) return 1;
         throw new RuntimeException(op + " is not a valid operator!");

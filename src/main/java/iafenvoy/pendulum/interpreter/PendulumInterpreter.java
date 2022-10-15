@@ -2,6 +2,7 @@ package iafenvoy.pendulum.interpreter;
 
 import com.google.common.collect.Lists;
 import iafenvoy.pendulum.interpreter.entry.*;
+import iafenvoy.pendulum.interpreter.util.CommandInterpretError;
 import iafenvoy.pendulum.interpreter.util.DataLoader;
 import iafenvoy.pendulum.interpreter.util.ExpressionUtils;
 import iafenvoy.pendulum.interpreter.util.entry.BooleanCommandEntry;
@@ -10,6 +11,8 @@ import iafenvoy.pendulum.interpreter.util.entry.VoidCommandEntry;
 import iafenvoy.pendulum.utils.FileUtils;
 import iafenvoy.pendulum.utils.NumberUtils;
 import iafenvoy.pendulum.utils.ThreadUtils;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.text.Text;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -30,6 +33,22 @@ public class PendulumInterpreter {
         register(new UseCommand());
 
         register(new HasCommand());
+        register(new BooleanCommandEntry() {
+            @Override
+            public boolean execute(PendulumInterpreter interpreter, String command) throws CommandInterpretError {
+                String[] commandP = command.split(" ");
+                String prefix = commandP[0];
+                if (booleanCommand.containsKey(prefix)) {
+                    BooleanCommandEntry entry = booleanCommand.get(prefix);
+                    return !entry.execute(interpreter, removePrefix(command, entry));
+                } else throw new CommandInterpretError("there is no such command!");
+            }
+
+            @Override
+            public String getPrefix() {
+                return "not";
+            }
+        });
     }
 
     private static List<String> rebuildCommand(List<String> cmd) {
@@ -66,7 +85,7 @@ public class PendulumInterpreter {
         return -1;
     }
 
-    public boolean parseSuffixList(List<String> cmd) {
+    public boolean parseSuffixList(List<String> cmd) throws CommandInterpretError {
         Stack<Boolean> stack = new Stack<>();
         for (String s : cmd) {
             if (ExpressionUtils.isOperator(s)) {
@@ -78,15 +97,19 @@ public class PendulumInterpreter {
                     boolean b1 = stack.pop(), b2 = stack.pop();
                     stack.push(b1 | b2);
                 }
-                if (s.equals("not")) {
-                    boolean b1 = stack.pop();
-                    stack.push(!b1);
-                }
+            } else {
+                if (s.isEmpty()) throw new RuntimeException();
+                String[] commandP = s.split(" ");
+                String prefix = commandP[0];
+                if (booleanCommand.containsKey(prefix)) {
+                    BooleanCommandEntry entry = booleanCommand.get(prefix);
+                    boolean result = entry.execute(this, removePrefix(s, entry));
+                    stack.push(result);
+                } else throw new CommandInterpretError("there is no such command!");
             }
-            else{
-                //parse boolean command
-            }
+            System.out.println(stack);
         }
+        System.out.println();
         return stack.peek();
     }
 
@@ -132,25 +155,32 @@ public class PendulumInterpreter {
                         return result;
                 }
                 i = endIndex;
-//            } else if (prefix.equals("while")) {
-//                String expression = removePrefix(cmd, () -> "while");
-//                String[] words = expression.split(" ");
-//                List<String> list = new ArrayList<>(), temp = new ArrayList<>();
-//                for (String s : words)
-//                    if (ExpressionUtils.isOperator(s) || s.equals("(") || s.equals(")")) {
-//                        list.add(String.join(" ", temp));
-//                        list.add(s);
-//                        temp.clear();
-//                    } else temp.add(s);
-//                List<String> expressions = ExpressionUtils.middleToSuffix(list);
-//                int endIndex = getEndIndex(command, i, "while", "endwhile");
-//                if (endIndex == -1) return InterpretResult.END_FLAG_NOT_FOUND;
-//                while (parseSuffixList(expressions)) {
-//                    InterpretResult result = interpret(command.subList(i + 1, endIndex));
-//                    if (result != InterpretResult.EMPTY)
-//                        return result;
-//                }
-//                i = endIndex;
+            } else if (prefix.equals("while")) {
+                String expression = removePrefix(cmd, () -> "while");
+                String[] words = expression.split(" ");
+                List<String> list = new ArrayList<>(), temp = new ArrayList<>();
+                for (String s : words) {
+                    if (s.isEmpty()) continue;
+                    if (ExpressionUtils.isOperator(s) || s.equals("(") || s.equals(")")) {
+                        list.add(String.join(" ", temp));
+                        list.add(s);
+                        temp.clear();
+                    } else temp.add(s);
+                }
+                if (!temp.isEmpty()) list.add(String.join(" ", temp));
+                List<String> expressions = ExpressionUtils.middleToSuffix(list);
+                int endIndex = getEndIndex(command, i, "while", "endwhile");
+                if (endIndex == -1) return InterpretResult.END_FLAG_NOT_FOUND;
+                try {
+                    while (parseSuffixList(expressions)) {
+                        InterpretResult result = interpret(command.subList(i + 1, endIndex));
+                        if (result != InterpretResult.EMPTY)
+                            return result;
+                    }
+                } catch (CommandInterpretError e) {
+                    return InterpretResult.COMMAND_NOT_FOUND;
+                }
+                i = endIndex;
             } else if (voidCommand.containsKey(prefix)) {//正常语句
                 try {
                     VoidCommandEntry entry = voidCommand.get(prefix);
