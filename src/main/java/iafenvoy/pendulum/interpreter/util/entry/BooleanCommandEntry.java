@@ -3,7 +3,17 @@ package iafenvoy.pendulum.interpreter.util.entry;
 import iafenvoy.pendulum.interpreter.PendulumInterpreter;
 import iafenvoy.pendulum.interpreter.util.OptionalResult;
 
-public interface BooleanCommandEntry extends CommandEntry {
+public abstract class BooleanCommandEntry implements CommandEntry {
+    private final String prefix;
 
-    OptionalResult<Boolean> execute(PendulumInterpreter interpreter, String command);
+    public BooleanCommandEntry(String prefix) {
+        this.prefix = prefix;
+    }
+
+    @Override
+    public String getPrefix() {
+        return this.prefix;
+    }
+
+    public abstract OptionalResult<Boolean> execute(PendulumInterpreter interpreter, String command);
 }

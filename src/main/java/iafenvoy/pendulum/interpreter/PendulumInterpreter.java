@@ -19,7 +19,7 @@ public class PendulumInterpreter {
     private final HashMap<String, BooleanCommandEntry> booleanCommand = new HashMap<>();
 
     public PendulumInterpreter() {
-        register(new BooleanCommandEntry() {
+        register(new BooleanCommandEntry("not") {
             @Override
             public OptionalResult<Boolean> execute(PendulumInterpreter interpreter, String command) {
                 String[] commandP = command.split(" ");
@@ -30,11 +30,6 @@ public class PendulumInterpreter {
                     optionalResult.setReturnValue(!optionalResult.getReturnValue());
                     return optionalResult;
                 } else throw new IllegalArgumentException("there is no such command!");
-            }
-
-            @Override
-            public String getPrefix() {
-                return "not";
             }
         });
         PendulumCommandManager.doRegister(this);
@@ -141,7 +136,7 @@ public class PendulumInterpreter {
                     if (commandP.length <= 1) return new OptionalResult<>(InterpretResult.TOO_FEW_ARGUMENTS);
                     String fileCmd = FileUtils.readByLines("./pendulum/" + commandP[1] + ".pendulum");
                     OptionalResult<Object> result = interpret(fileCmd.replace("\n", ";").split(";"));
-                    if(result.hasError())
+                    if (result.hasError())
                         return result;
                 } catch (IOException e) {
                     e.printStackTrace();

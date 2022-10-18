@@ -3,6 +3,7 @@ package iafenvoy.pendulum.interpreter.util;
 import java.util.LinkedList;
 
 public class TaskQueue<E> extends LinkedList<E> {
+    private Callback<E> callback;
     private final Thread workingThread = new Thread(() -> {
         while (true) {
             if (this.isEmpty()) {
@@ -16,7 +17,6 @@ public class TaskQueue<E> extends LinkedList<E> {
                 throw new IllegalArgumentException("Unexpected null callback");
         }
     });
-    private Callback<E> callback;
 
     public TaskQueue(Callback<E> callback) {
         super();
@@ -35,11 +35,11 @@ public class TaskQueue<E> extends LinkedList<E> {
         return ret;
     }
 
-    public interface Callback<T> {
-        void execute(T element);
-    }
-
     private void pauseThread() {
         workingThread.suspend();
+    }
+
+    public interface Callback<T> {
+        void execute(T element);
     }
 }

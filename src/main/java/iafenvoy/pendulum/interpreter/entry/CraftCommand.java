@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import iafenvoy.pendulum.interpreter.PendulumInterpreter;
 import iafenvoy.pendulum.interpreter.util.DataLoader;
 import iafenvoy.pendulum.interpreter.util.OptionalResult;
+import iafenvoy.pendulum.interpreter.util.entry.HelpTextProvider;
 import iafenvoy.pendulum.interpreter.util.entry.VoidCommandEntry;
 import iafenvoy.pendulum.utils.ItemUtils;
 import iafenvoy.pendulum.utils.ThreadUtils;
@@ -15,10 +16,9 @@ import net.minecraft.screen.slot.SlotActionType;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CraftCommand implements VoidCommandEntry {
-    @Override
-    public String getPrefix() {
-        return "craft";
+public class CraftCommand extends VoidCommandEntry implements HelpTextProvider {
+    public CraftCommand() {
+        super("craft");
     }
 
     @Override
@@ -38,5 +38,10 @@ public class CraftCommand implements VoidCommandEntry {
         ThreadUtils.sleep(DataLoader.sleepDelta);
         client.interactionManager.clickSlot(client.player.currentScreenHandler.syncId, 0, 0, SlotActionType.QUICK_MOVE, client.player);
         return new OptionalResult<>();
+    }
+
+    @Override
+    public String getHelpText() {
+        return "craft <item> | Craft specific item once, fail while there is no enough materials.";
     }
 }

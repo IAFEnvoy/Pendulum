@@ -2,13 +2,13 @@ package iafenvoy.pendulum.interpreter.entry;
 
 import iafenvoy.pendulum.interpreter.PendulumInterpreter;
 import iafenvoy.pendulum.interpreter.util.OptionalResult;
+import iafenvoy.pendulum.interpreter.util.entry.HelpTextProvider;
 import iafenvoy.pendulum.interpreter.util.entry.VoidCommandEntry;
 import net.minecraft.entity.player.PlayerInventory;
 
-public class HotBarCommand implements VoidCommandEntry {
-    @Override
-    public String getPrefix() {
-        return "hotbar";
+public class HotBarCommand extends VoidCommandEntry implements HelpTextProvider {
+    public HotBarCommand() {
+        super("hotbar");
     }
 
     @Override
@@ -19,5 +19,10 @@ public class HotBarCommand implements VoidCommandEntry {
         assert client.player != null;
         client.player.inventory.selectedSlot = stack - 1;
         return new OptionalResult<>();
+    }
+
+    @Override
+    public String getHelpText() {
+        return "hotbar <1-9> | Change to the specific hot bar.";
     }
 }

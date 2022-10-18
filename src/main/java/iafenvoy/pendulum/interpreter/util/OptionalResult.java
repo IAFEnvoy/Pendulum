@@ -19,16 +19,16 @@ public class OptionalResult<T> {
         this.returnValue = returnValue;
     }
 
-    public void setReturnValue(T returnValue) {
-        this.returnValue = returnValue;
-    }
-
     public boolean hasError() {
         return this.result != InterpretResult.EMPTY;
     }
 
     public T getReturnValue() {
         return returnValue;
+    }
+
+    public void setReturnValue(T returnValue) {
+        this.returnValue = returnValue;
     }
 
     public InterpretResult getResult() {

@@ -2,12 +2,12 @@ package iafenvoy.pendulum.interpreter.entry;
 
 import iafenvoy.pendulum.interpreter.PendulumInterpreter;
 import iafenvoy.pendulum.interpreter.util.OptionalResult;
+import iafenvoy.pendulum.interpreter.util.entry.HelpTextProvider;
 import iafenvoy.pendulum.interpreter.util.entry.VoidCommandEntry;
 
-public class SayCommand implements VoidCommandEntry {
-    @Override
-    public String getPrefix() {
-        return "say";
+public class SayCommand extends VoidCommandEntry implements HelpTextProvider {
+    public SayCommand() {
+        super("say");
     }
 
     @Override
@@ -15,5 +15,10 @@ public class SayCommand implements VoidCommandEntry {
         assert client.player != null;
         client.player.sendChatMessage(command);
         return new OptionalResult<>();
+    }
+
+    @Override
+    public String getHelpText() {
+        return "say <message> | Send message to the server.";
     }
 }

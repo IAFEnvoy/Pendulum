@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import iafenvoy.pendulum.interpreter.PendulumInterpreter;
 import iafenvoy.pendulum.interpreter.util.OptionalResult;
 import iafenvoy.pendulum.interpreter.util.entry.BooleanCommandEntry;
+import iafenvoy.pendulum.interpreter.util.entry.HelpTextProvider;
 import iafenvoy.pendulum.utils.ItemUtils;
 import iafenvoy.pendulum.utils.NumberUtils;
 import net.minecraft.entity.player.PlayerInventory;
@@ -12,10 +13,9 @@ import net.minecraft.item.Items;
 
 import java.util.List;
 
-public class HasCommand implements BooleanCommandEntry {
-    @Override
-    public String getPrefix() {
-        return "has";
+public class HasCommand extends BooleanCommandEntry implements HelpTextProvider {
+    public HasCommand() {
+        super("has");
     }
 
     @Override
@@ -35,5 +35,10 @@ public class HasCommand implements BooleanCommandEntry {
                 if (haveCount >= count) return new OptionalResult<>(true);
             }
         return new OptionalResult<>(false);
+    }
+
+    @Override
+    public String getHelpText() {
+        return "has <item> <count=1> | Check if there has specified quantity of item.";
     }
 }
