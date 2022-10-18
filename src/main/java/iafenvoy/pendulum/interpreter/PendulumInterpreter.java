@@ -6,10 +6,12 @@ import iafenvoy.pendulum.interpreter.util.InterpretResult;
 import iafenvoy.pendulum.interpreter.util.OptionalResult;
 import iafenvoy.pendulum.interpreter.util.entry.BooleanCommandEntry;
 import iafenvoy.pendulum.interpreter.util.entry.CommandEntry;
+import iafenvoy.pendulum.interpreter.util.entry.HelpTextProvider;
 import iafenvoy.pendulum.interpreter.util.entry.VoidCommandEntry;
 import iafenvoy.pendulum.utils.FileUtils;
 import iafenvoy.pendulum.utils.NumberUtils;
 import iafenvoy.pendulum.utils.ThreadUtils;
+import net.minecraft.text.Text;
 
 import java.io.IOException;
 import java.util.*;
@@ -17,6 +19,7 @@ import java.util.*;
 public class PendulumInterpreter {
     private final HashMap<String, VoidCommandEntry> voidCommand = new HashMap<>();
     private final HashMap<String, BooleanCommandEntry> booleanCommand = new HashMap<>();
+    private final HashMap<String, HelpTextProvider> helpTextProviders = new HashMap<>();
 
     public PendulumInterpreter() {
         register(new BooleanCommandEntry("not") {
@@ -30,6 +33,17 @@ public class PendulumInterpreter {
                     optionalResult.setReturnValue(!optionalResult.getReturnValue());
                     return optionalResult;
                 } else throw new IllegalArgumentException("there is no such command!");
+            }
+        });
+        register(new VoidCommandEntry("help") {
+            @Override
+            public OptionalResult<Object> execute(PendulumInterpreter interpreter, String command) {
+                assert client.player != null;
+                if (helpTextProviders.containsKey(command))
+                    client.player.sendMessage(Text.of(helpTextProviders.get(command).getHelpText()), false);
+                else
+                    client.player.sendMessage(Text.of("Command help not found!"), false);
+                return new OptionalResult<>();
             }
         });
         PendulumCommandManager.doRegister(this);
@@ -113,10 +127,14 @@ public class PendulumInterpreter {
 
     public void register(VoidCommandEntry entry) {
         voidCommand.put(entry.getPrefix(), entry);
+        if (entry instanceof HelpTextProvider)
+            helpTextProviders.put(entry.getPrefix(), (HelpTextProvider) entry);
     }
 
     public void register(BooleanCommandEntry entry) {
         booleanCommand.put(entry.getPrefix(), entry);
+        if (entry instanceof HelpTextProvider)
+            helpTextProviders.put(entry.getPrefix(), (HelpTextProvider) entry);
     }
 
     public OptionalResult<Object> interpret(String... command) {
