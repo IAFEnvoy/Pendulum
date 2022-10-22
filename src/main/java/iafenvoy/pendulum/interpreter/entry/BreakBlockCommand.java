@@ -25,8 +25,12 @@ public class BreakBlockCommand extends VoidCommandEntry implements HelpTextProvi
         if (DataLoader.currentPos != null || DataLoader.callback != null)
             return new OptionalResult<>("The pos is locked!");
         if (client.crosshairTarget != null && client.crosshairTarget.getType() == HitResult.Type.BLOCK) {
-            DataLoader.callback = () -> ((IMixinMinecraftClient) client).invokeHandleBlockBreaking(true);
             DataLoader.currentPos = ((BlockHitResult) client.crosshairTarget).getBlockPos();
+            DataLoader.callback = () -> {
+                ((IMixinMinecraftClient) client).setAttackCooldown(0);//因为mc会在打开各种界面的时候将这个值设置成10000来防止操作，所以要改掉
+                ((IMixinMinecraftClient) client).invokeHandleBlockBreaking(true);
+                ((IMixinMinecraftClient) client).setAttackCooldown(10000);
+            };
             while (DataLoader.currentPos != null)
                 ThreadUtils.sleep(50);
             DataLoader.callback = null;

@@ -18,4 +18,7 @@ public interface IMixinMinecraftClient {
 
     @Invoker("handleBlockBreaking")
     void invokeHandleBlockBreaking(boolean doBreak);
+
+    @Accessor("attackCooldown")
+    void setAttackCooldown(int attackCooldown);
 }

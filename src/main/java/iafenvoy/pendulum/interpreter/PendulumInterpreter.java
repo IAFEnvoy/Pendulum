@@ -8,10 +8,10 @@ import iafenvoy.pendulum.interpreter.util.entry.BooleanCommandEntry;
 import iafenvoy.pendulum.interpreter.util.entry.CommandEntry;
 import iafenvoy.pendulum.interpreter.util.entry.HelpTextProvider;
 import iafenvoy.pendulum.interpreter.util.entry.VoidCommandEntry;
+import iafenvoy.pendulum.utils.ClientUtils;
 import iafenvoy.pendulum.utils.FileUtils;
 import iafenvoy.pendulum.utils.NumberUtils;
 import iafenvoy.pendulum.utils.ThreadUtils;
-import net.minecraft.text.Text;
 
 import java.io.IOException;
 import java.util.*;
@@ -40,9 +40,9 @@ public class PendulumInterpreter {
             public OptionalResult<Object> execute(PendulumInterpreter interpreter, String command) {
                 assert client.player != null;
                 if (helpTextProviders.containsKey(command))
-                    client.player.sendMessage(Text.of(helpTextProviders.get(command).getHelpText()), false);
+                    ClientUtils.sendMessage(helpTextProviders.get(command).getHelpText());
                 else
-                    client.player.sendMessage(Text.of("Command help not found!"), false);
+                    ClientUtils.sendMessage("Command help not found!");
                 return new OptionalResult<>();
             }
         });
@@ -128,13 +128,17 @@ public class PendulumInterpreter {
     public void register(VoidCommandEntry entry) {
         voidCommand.put(entry.getPrefix(), entry);
         if (entry instanceof HelpTextProvider)
-            helpTextProviders.put(entry.getPrefix(), (HelpTextProvider) entry);
+            this.registerHelpTextProvider(entry.getPrefix(), (HelpTextProvider) entry);
     }
 
     public void register(BooleanCommandEntry entry) {
         booleanCommand.put(entry.getPrefix(), entry);
         if (entry instanceof HelpTextProvider)
-            helpTextProviders.put(entry.getPrefix(), (HelpTextProvider) entry);
+            this.registerHelpTextProvider(entry.getPrefix(), (HelpTextProvider) entry);
+    }
+
+    public void registerHelpTextProvider(String cmd, HelpTextProvider provider) {
+        helpTextProviders.put(cmd, provider);
     }
 
     public OptionalResult<Object> interpret(String... command) {
@@ -160,6 +164,11 @@ public class PendulumInterpreter {
                     e.printStackTrace();
                     return new OptionalResult<>("The file cannot be read!");
                 }
+//            } else if (prefix.equals("import")) {
+//                try{
+//                    if (commandP.length <= 1) return new OptionalResult<>(InterpretResult.TOO_FEW_ARGUMENTS);
+//
+//                }
             } else if (prefix.equals("for")) {//for语句
                 if (commandP.length == 1) return new OptionalResult<>(InterpretResult.TOO_FEW_ARGUMENTS);
                 int times = NumberUtils.parseInt(commandP[1]);

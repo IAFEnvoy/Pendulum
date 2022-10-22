@@ -18,10 +18,10 @@ public class TaskQueue<E> extends LinkedList<E> {
         }
     });
 
-    public TaskQueue(Callback<E> callback) {
+    public TaskQueue(Callback<E> callback, String threadName) {
         super();
         this.callback = callback;
-        this.workingThread.setName("Pendulum interpreter");
+        this.workingThread.setName(threadName);
         workingThread.start();
     }
 

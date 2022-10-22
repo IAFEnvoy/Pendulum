@@ -9,7 +9,7 @@ public class PendulumRunner {
         OptionalResult<Object> error = new PendulumInterpreter().interpret(cmd.split(";"));
         if (error.hasError())
             ClientUtils.sendMessage(error.getResult().getErrorMessage());
-    });
+    }, "Pendulum Interpreter");
 
     public static void pushCommands(String cmd) {
         queue.offer(cmd);
