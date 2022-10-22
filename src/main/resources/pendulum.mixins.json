@@ -4,7 +4,10 @@
   "package": "iafenvoy.pendulum.mixins",
   "compatibilityLevel": "JAVA_8",
   "client": [
+    "IMixinClientPlayerInteractionManager",
     "IMixinMinecraftClient",
+    "MixinClientPlayNetworkHandler",
+    "MixinMinecraftClient",
     "MixinRecipeBookResults"
   ],
   "injectors": {

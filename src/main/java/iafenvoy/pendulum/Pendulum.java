@@ -19,5 +19,9 @@ public class Pendulum implements ClientModInitializer {
             DataLoader.sleepDelta = Integer.parseInt(StringArgumentType.getString(ctx, "time"));
             return 0;
         })));
+        ClientCommandManager.DISPATCHER.register(ClientCommandManager.literal("stopPendulum").executes(ctx -> {
+            PendulumRunner.stop();
+            return 0;
+        }));
     }
 }

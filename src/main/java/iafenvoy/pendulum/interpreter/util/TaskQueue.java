@@ -35,7 +35,7 @@ public class TaskQueue<E> extends LinkedList<E> {
         return ret;
     }
 
-    private void pauseThread() {
+    public void pauseThread() {
         workingThread.suspend();
     }
 
