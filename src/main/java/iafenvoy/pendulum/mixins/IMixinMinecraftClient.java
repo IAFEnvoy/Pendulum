@@ -13,9 +13,6 @@ public interface IMixinMinecraftClient {
     @Invoker("doItemUse")
     void invokeDoItemUse();
 
-    @Invoker("doAttack")
-    void invokeDoAttack();
-
     @Invoker("handleBlockBreaking")
     void invokeHandleBlockBreaking(boolean doBreak);
 

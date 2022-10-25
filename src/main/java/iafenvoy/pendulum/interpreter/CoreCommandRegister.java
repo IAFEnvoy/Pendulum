@@ -16,6 +16,7 @@ public class CoreCommandRegister {
             interpreter.register(new UseCommand());
             //boolean
             interpreter.register(new HasCommand());
+            interpreter.register(new FacingCommand());
         });
     }
 }

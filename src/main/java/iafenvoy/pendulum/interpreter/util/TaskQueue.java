@@ -29,14 +29,17 @@ public class TaskQueue<E> extends LinkedList<E> {
     public boolean offer(E e) {
         boolean isStart = !this.isEmpty();
         boolean ret = super.offer(e);
-        if (!isStart) {
-            workingThread.resume();
-        }
+        if (!isStart)
+            this.resumeThread();
         return ret;
     }
 
     public void pauseThread() {
         workingThread.suspend();
+    }
+
+    public void resumeThread() {
+        workingThread.resume();
     }
 
     public interface Callback<T> {

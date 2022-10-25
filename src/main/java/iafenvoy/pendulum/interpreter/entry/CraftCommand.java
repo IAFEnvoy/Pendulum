@@ -6,7 +6,7 @@ import iafenvoy.pendulum.interpreter.util.DataLoader;
 import iafenvoy.pendulum.interpreter.util.OptionalResult;
 import iafenvoy.pendulum.interpreter.util.entry.HelpTextProvider;
 import iafenvoy.pendulum.interpreter.util.entry.VoidCommandEntry;
-import iafenvoy.pendulum.utils.ItemUtils;
+import iafenvoy.pendulum.utils.RegistryUtils;
 import iafenvoy.pendulum.utils.ThreadUtils;
 import net.minecraft.item.Item;
 import net.minecraft.item.Items;
@@ -25,7 +25,7 @@ public class CraftCommand extends VoidCommandEntry implements HelpTextProvider {
     public OptionalResult<Object> execute(PendulumInterpreter interpreter, String command) {
         List<String> items = Lists.newArrayList(command.split(" "));
         if (items.size() != 1) return new OptionalResult<>("craft command should have 1 arguments");
-        Item item = ItemUtils.GetItemFromName(items.get(0));
+        Item item = RegistryUtils.getItemByName(items.get(0));
         List<Recipe<?>> recipes = new ArrayList<>(DataLoader.craftableRecipe);
         Recipe<?> target = null;
         for (Recipe<?> recipe : recipes)
