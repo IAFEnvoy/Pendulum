@@ -8,6 +8,7 @@ import iafenvoy.pendulum.interpreter.util.entry.HelpTextProvider;
 import iafenvoy.pendulum.interpreter.util.entry.VoidCommandEntry;
 import iafenvoy.pendulum.utils.RegistryUtils;
 import iafenvoy.pendulum.utils.ThreadUtils;
+import net.minecraft.client.gui.screen.ingame.CraftingScreen;
 import net.minecraft.item.Item;
 import net.minecraft.item.Items;
 import net.minecraft.recipe.Recipe;
@@ -23,8 +24,10 @@ public class CraftCommand extends VoidCommandEntry implements HelpTextProvider {
 
     @Override
     public OptionalResult<Object> execute(PendulumInterpreter interpreter, String command) {
+        if (!(client.currentScreen instanceof CraftingScreen))
+            return new OptionalResult<>("craft command should be used while the crafting screen is open!");
         List<String> items = Lists.newArrayList(command.split(" "));
-        if (items.size() != 1) return new OptionalResult<>("craft command should have 1 arguments");
+        if (items.size() == 0) return new OptionalResult<>("craft command should have 1 arguments");
         Item item = RegistryUtils.getItemByName(items.get(0));
         List<Recipe<?>> recipes = new ArrayList<>(DataLoader.craftableRecipe);
         Recipe<?> target = null;
@@ -34,7 +37,7 @@ public class CraftCommand extends VoidCommandEntry implements HelpTextProvider {
         if (target == null || item == Items.AIR) return new OptionalResult<>("Not matched recipe was found!");
         assert client.interactionManager != null;
         assert client.player != null;
-        client.interactionManager.clickRecipe(client.player.currentScreenHandler.syncId, target, false);
+        client.interactionManager.clickRecipe(client.player.currentScreenHandler.syncId, target, items.size() >= 2 && items.get(1).equals("true"));
         ThreadUtils.sleep(DataLoader.sleepDelta);
         client.interactionManager.clickSlot(client.player.currentScreenHandler.syncId, 0, 0, SlotActionType.QUICK_MOVE, client.player);
         return new OptionalResult<>();
@@ -42,6 +45,6 @@ public class CraftCommand extends VoidCommandEntry implements HelpTextProvider {
 
     @Override
     public String getHelpText() {
-        return "craft <item> | Craft specific item once, fail while there is no enough materials.";
+        return "craft <item> <all=false> | Craft specific item once, fail while there is no enough materials.";
     }
 }

@@ -35,6 +35,6 @@ public class FacingCommand extends BooleanCommandEntry implements HelpTextProvid
 
     @Override
     public String getHelpText() {
-        return null;
+        return "facing <block/entity> <name> | Check if the cross hair target at the specified block or entity.";
     }
 }
