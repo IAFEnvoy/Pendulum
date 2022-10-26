@@ -21,17 +21,15 @@ public class FileUtils {
         HttpURLConnection httpUrl = (HttpURLConnection) new URL(url).openConnection();
         httpUrl.connect();
         InputStream ins = httpUrl.getInputStream();
-        String filePath = "./pendulum/import/" + name + ".pendulum";
-        File file = new File(filePath);
+        File file = new File("./pendulum/import/" + name + ".pendulum");
         OutputStream os = Files.newOutputStream(file.toPath());
         int bytesRead;
         int len = 1024;
         byte[] buffer = new byte[len];
-        while ((bytesRead = ins.read(buffer, 0, len)) != -1) {
+        while ((bytesRead = ins.read(buffer, 0, len)) != -1)
             os.write(buffer, 0, bytesRead);
-        }
         os.close();
         ins.close();
-        return filePath;
+        return "import/" + name;
     }
 }

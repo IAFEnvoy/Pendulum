@@ -164,11 +164,16 @@ public class PendulumInterpreter {
                     e.printStackTrace();
                     return new OptionalResult<>("The file cannot be read!");
                 }
-//            } else if (prefix.equals("import")) {
-//                try{
-//                    if (commandP.length <= 1) return new OptionalResult<>(InterpretResult.TOO_FEW_ARGUMENTS);
-//
-//                }
+            } else if (prefix.equals("import")) {//import语句
+                try {
+                    if (commandP.length <= 2) return new OptionalResult<>(InterpretResult.TOO_FEW_ARGUMENTS);
+                    OptionalResult<Object> result = interpret("file " + FileUtils.loadFileFromWeb(commandP[1], commandP[2]));
+                    if (result.hasError())
+                        return result;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return new OptionalResult<>("The file cannot be download!");
+                }
             } else if (prefix.equals("for")) {//for语句
                 if (commandP.length == 1) return new OptionalResult<>(InterpretResult.TOO_FEW_ARGUMENTS);
                 int times = NumberUtils.parseInt(commandP[1]);
