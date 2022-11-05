@@ -6,4 +6,8 @@ public interface CommandEntry {
     MinecraftClient client = MinecraftClient.getInstance();
 
     String getPrefix();
+
+    default boolean isDebugCommand() {
+        return false;
+    }
 }
