@@ -1,13 +1,7 @@
 package iafenvoy.pendulum.interpreter;
 
-import iafenvoy.pendulum.interpreter.util.DataLoader;
-import iafenvoy.pendulum.interpreter.util.ExpressionUtils;
-import iafenvoy.pendulum.interpreter.util.InterpretResult;
-import iafenvoy.pendulum.interpreter.util.OptionalResult;
-import iafenvoy.pendulum.interpreter.util.entry.BooleanCommandEntry;
-import iafenvoy.pendulum.interpreter.util.entry.CommandEntry;
-import iafenvoy.pendulum.interpreter.util.entry.HelpTextProvider;
-import iafenvoy.pendulum.interpreter.util.entry.VoidCommandEntry;
+import iafenvoy.pendulum.interpreter.util.*;
+import iafenvoy.pendulum.interpreter.util.entry.*;
 import iafenvoy.pendulum.utils.ClientUtils;
 import iafenvoy.pendulum.utils.FileUtils;
 import iafenvoy.pendulum.utils.NumberUtils;
@@ -19,6 +13,9 @@ import java.util.*;
 public class PendulumInterpreter {
     private final HashMap<String, VoidCommandEntry> voidCommand = new HashMap<>();
     private final HashMap<String, BooleanCommandEntry> booleanCommand = new HashMap<>();
+    private final HashMap<String, IntegerCommandEntry> integerCommand = new HashMap<>();
+    private final HashMap<String, DoubleCommandEntry> doubleCommand = new HashMap<>();
+    private final HashMap<String, List<String>> defList = new HashMap<>();
     private final HashMap<String, HelpTextProvider> helpTextProviders = new HashMap<>();
 
     public PendulumInterpreter() {
@@ -39,9 +36,11 @@ public class PendulumInterpreter {
             @Override
             public OptionalResult<Object> execute(PendulumInterpreter interpreter, String command) {
                 assert client.player != null;
-                if (helpTextProviders.containsKey(command))
-                    ClientUtils.sendMessage(helpTextProviders.get(command).getHelpText());
-                else
+                if (helpTextProviders.containsKey(command)) {
+                    String help = helpTextProviders.get(command).getHelpText();
+                    if (help == null) throw new IllegalArgumentException("Help text provider should not be null!");
+                    else ClientUtils.sendMessage(help);
+                } else
                     ClientUtils.sendMessage("Command help not found!");
                 return new OptionalResult<>();
             }
@@ -52,7 +51,7 @@ public class PendulumInterpreter {
     private static List<String> rebuildCommand(List<String> cmd) {
         List<String> cmd2 = new ArrayList<>();
         for (String s : cmd)
-            cmd2.add(rebuildCommand(s));
+            cmd2.addAll(Arrays.asList(rebuildCommand(s).split(";")));
         return cmd2;
     }
 
@@ -137,16 +136,27 @@ public class PendulumInterpreter {
             this.registerHelpTextProvider(entry.getPrefix(), (HelpTextProvider) entry);
     }
 
+    public void register(IntegerCommandEntry entry) {
+        integerCommand.put(entry.getPrefix(), entry);
+        if (entry instanceof HelpTextProvider)
+            this.registerHelpTextProvider(entry.getPrefix(), (HelpTextProvider) entry);
+    }
+
+    public void register(DoubleCommandEntry entry) {
+        doubleCommand.put(entry.getPrefix(), entry);
+        if (entry instanceof HelpTextProvider)
+            this.registerHelpTextProvider(entry.getPrefix(), (HelpTextProvider) entry);
+    }
+
     public void registerHelpTextProvider(String cmd, HelpTextProvider provider) {
         helpTextProviders.put(cmd, provider);
     }
 
     public OptionalResult<Object> interpret(String... command) {
-        return interpret(Arrays.asList(command));
+        return interpret(Arrays.asList(command), new CommandLocation("console", "main"));
     }
 
-    public OptionalResult<Object> interpret(List<String> command) {
-        if (command.size() == 0) return new OptionalResult<>(InterpretResult.NO_COMMAND);
+    public OptionalResult<Object> interpret(List<String> command, CommandLocation location) {
         command = rebuildCommand(command);
         for (int i = 0; i < command.size(); i++) {
             String cmd = command.get(i);
@@ -157,7 +167,8 @@ public class PendulumInterpreter {
                 try {
                     if (commandP.length <= 1) return new OptionalResult<>(InterpretResult.TOO_FEW_ARGUMENTS);
                     String fileCmd = FileUtils.readByLines("./pendulum/" + commandP[1] + ".pendulum");
-                    OptionalResult<Object> result = interpret(fileCmd.replace("\n", ";").split(";"));
+                    OptionalResult<Object> result = interpret(Collections.singletonList(fileCmd.replace("\n", ";")), location.setFile(commandP[1]));
+                    result.addStackTrace(location, i + 1);
                     if (result.hasError())
                         return result;
                 } catch (IOException e) {
@@ -168,19 +179,35 @@ public class PendulumInterpreter {
                 try {
                     if (commandP.length <= 2) return new OptionalResult<>(InterpretResult.TOO_FEW_ARGUMENTS);
                     OptionalResult<Object> result = interpret("file " + FileUtils.loadFileFromWeb(commandP[1], commandP[2]));
+                    result.addStackTrace(location, i + 1);
                     if (result.hasError())
                         return result;
                 } catch (IOException e) {
                     e.printStackTrace();
                     return new OptionalResult<>("The file cannot be download!");
                 }
+            } else if (prefix.equals("call")) {
+                String name = removePrefix(cmd, () -> "call");
+                if (defList.containsKey(name)) {
+                    OptionalResult<Object> result = interpret(defList.get(name), location.setDef(name));
+                    result.addStackTrace(location, i + 1);
+                    if (result.hasError())
+                        return result;
+                } else return new OptionalResult<>(InterpretResult.COMMAND_NOT_FOUND);
+            } else if (prefix.equals("def")) {
+                String name = removePrefix(cmd, () -> "def");
+                int endIndex = getEndIndex(command, i, "def", "enddef");
+                if (endIndex == -1) return new OptionalResult<>(InterpretResult.END_FLAG_NOT_FOUND);
+                this.defList.put(name, command.subList(i + 1, endIndex));
+                i = endIndex;
             } else if (prefix.equals("for")) {//for语句
                 if (commandP.length == 1) return new OptionalResult<>(InterpretResult.TOO_FEW_ARGUMENTS);
                 int times = NumberUtils.parseInt(commandP[1]);
                 int endIndex = getEndIndex(command, i, "for", "endfor");
                 if (endIndex == -1) return new OptionalResult<>(InterpretResult.END_FLAG_NOT_FOUND);
                 for (int j = 0; j < times; j++) {
-                    OptionalResult<Object> result = interpret(command.subList(i + 1, endIndex));
+                    OptionalResult<Object> result = interpret(command.subList(i + 1, endIndex), location.setDef("for loop block"));
+                    result.addStackTrace(location, i + 1);
                     if (result.hasError())
                         return result;
                 }
@@ -193,7 +220,8 @@ public class PendulumInterpreter {
                     OptionalResult<Boolean> optionalResult = parseSuffixList(expressions);
                     if (optionalResult.hasError()) return new OptionalResult<>(optionalResult.getResult());
                     if (!optionalResult.getReturnValue()) break;
-                    OptionalResult<Object> result = interpret(command.subList(i + 1, endIndex));
+                    OptionalResult<Object> result = interpret(command.subList(i + 1, endIndex), location.setDef("while loop block"));
+                    result.addStackTrace(location, i + 1);
                     if (result.hasError())
                         return result;
                 }
@@ -209,11 +237,14 @@ public class PendulumInterpreter {
                 OptionalResult<Object> result = new OptionalResult<>();
                 if (elseLocation == -1) {
                     if (ifResult.getReturnValue())
-                        result = interpret(ifObject);
+                        result = interpret(ifObject, location.setDef("if block"));
                 } else {
-                    if (ifResult.getReturnValue()) result = interpret(ifObject.subList(0, elseLocation));
-                    else result = interpret(ifObject.subList(elseLocation + 1, ifObject.size()));
+                    if (ifResult.getReturnValue())
+                        result = interpret(ifObject.subList(0, elseLocation), location.setDef("if block"));
+                    else
+                        result = interpret(ifObject.subList(elseLocation + 1, ifObject.size()), location.setDef("else block"));
                 }
+                result.addStackTrace(location, i + 1);
                 if (result.hasError())
                     return result;
                 i = endIndex;
@@ -224,11 +255,13 @@ public class PendulumInterpreter {
                 } catch (Exception e) {
                     return new OptionalResult<>(e.getMessage());
                 }
-            } else
-                return new OptionalResult<>(InterpretResult.COMMAND_NOT_FOUND);
+            } else {
+                OptionalResult<Object> result = new OptionalResult<>(InterpretResult.COMMAND_NOT_FOUND);
+                result.addStackTrace(location, i);
+                return result;
+            }
             ThreadUtils.sleep(DataLoader.sleepDelta);
         }
         return new OptionalResult<>();
     }
-
 }

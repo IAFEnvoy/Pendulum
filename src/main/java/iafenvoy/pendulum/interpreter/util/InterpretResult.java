@@ -2,7 +2,6 @@ package iafenvoy.pendulum.interpreter.util;
 
 public class InterpretResult {
     public static final InterpretResult EMPTY = new InterpretResult(null);
-    public static final InterpretResult NO_COMMAND = new InterpretResult("There is no command to execute!");
     public static final InterpretResult COMMAND_NOT_FOUND = new InterpretResult("There is no such command!");
     public static final InterpretResult TOO_FEW_ARGUMENTS = new InterpretResult("There is too few arguments!");
     public static final InterpretResult END_FLAG_NOT_FOUND = new InterpretResult("End flag not found!");
