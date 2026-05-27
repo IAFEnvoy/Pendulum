@@ -10,7 +10,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 /**
@@ -34,9 +33,6 @@ public final class ScriptEngine {
     private volatile boolean running;
     private volatile String currentSource;
     private volatile Future<?> currentFuture;
-
-    // 跨线程 tick 等待（每游戏 tick 减 1）
-    private static final AtomicInteger pendingTicks = new AtomicInteger(0);
 
     private ScriptEngine() {}
 
@@ -112,7 +108,7 @@ public final class ScriptEngine {
     static boolean waitForBreak() {
         long deadline = System.currentTimeMillis() + 10000L;
         while (System.currentTimeMillis() < deadline) {
-            boolean[] done = {false, false}; // [isAir, timedOut]
+            boolean[] done = {false};
             submitToGameThread(() -> {
                 Minecraft mc = Minecraft.getInstance();
                 PlayerSimulator sim = PlayerSimulator.getInstance();
@@ -121,18 +117,19 @@ public final class ScriptEngine {
                 }
             });
             if (done[0]) return true;
-            waitTicks(1);
+            singleTickSleep();
         }
-        return false; // timeout
+        return false;
     }
 
-    /** 在 JS 线程调用：等待 ticks 个游戏刻（每 tick 由游戏线程扣减 pendingTicks） */
+    /** 让 JS 线程等待一个游戏 tick */
+    private static void singleTickSleep() {
+        try { Thread.sleep(50); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+    }
+
+    /** 在 JS 线程调用：等待 ticks 个游戏刻 */
     static void waitTicks(int ticks) {
-        if (ticks <= 0) return;
-        pendingTicks.addAndGet(ticks);
-        while (pendingTicks.get() > 0) {
-            try { Thread.sleep(1); } catch (InterruptedException e) { break; }
-        }
+        for (int i = 0; i < ticks; i++) singleTickSleep();
     }
 
     // ==================== 游戏线程 tick ====================
@@ -143,8 +140,6 @@ public final class ScriptEngine {
             if (task == null) break;
             task.run();
         }
-        // 每 tick 扣减一次，JS 线程的 waitTicks 在 polling
-        pendingTicks.decrementAndGet();
         applyBlockBreaking();
     }
 
