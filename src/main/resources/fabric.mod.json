@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "${mod_id}",
+  "name": "${mod_name}",
+  "version": "${mod_version}",
+  "authors": [
+    "${mod_authors}"
+  ],
+  "contact": {
+    "sources": "${mod_repo_url}",
+    "issues": "${mod_repo_url}/issues"
+  },
+  "description": "${mod_description}",
+  "icon": "${mod_logo}",
+  "license": "${mod_license}",
+  "environment": "*",
+  "entrypoints": {
+  },
+  "mixins": [
+  ],
+  "depends": {
+    "minecraft": "${minecraft_version_range_fabric}"
+  }
+}
