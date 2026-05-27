@@ -16,9 +16,11 @@ jsonlang {
 
 repositories {
     mavenLocal()
+    mavenCentral()
     maven("https://maven.parchmentmc.org") { name = "ParchmentMC" }
     maven("https://maven.terraformersmc.com/") { name = "ModMenu" }
     maven("https://maven.nucleoid.xyz/") { name = "Placeholder API" }
+    maven("https://cursemaven.com/") { name = "Curse Maven" }
 }
 
 dependencies {
@@ -31,6 +33,12 @@ dependencies {
     modImplementation("net.fabricmc:fabric-loader:${property("deps.fabric-loader")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${property("deps.fabric-api")}")
     modImplementation("com.terraformersmc:modmenu:${property("deps.mod_menu")}")
+
+    // Mozilla Rhino JavaScript 引擎 (打包进模组)
+    modImplementation("org.mozilla:rhino:1.7.14")
+    include("org.mozilla:rhino:1.7.14")
+
+    modCompileOnly("curse.maven:baritone-simply-1066613:5544753")
 }
 
 fabricApi {
