@@ -1,7 +1,6 @@
 package com.iafenvoy.pendulum;
 
 import com.iafenvoy.pendulum.script.MinecraftAPI;
-import com.iafenvoy.pendulum.script.PlayerSimulator;
 import com.iafenvoy.pendulum.script.ScriptEngine;
 import com.mojang.logging.LogUtils;
 import net.fabricmc.api.ClientModInitializer;
@@ -9,7 +8,6 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import org.slf4j.Logger;
 
@@ -100,46 +98,11 @@ public final class PendulumClient implements ClientModInitializer {
             dispatcher.register(cmd);
         });
 
-        // 每 tick：移动同步 + 脚本恢复 + 破坏驱动
+        // 每 tick：脚本任务处理 + 持续破坏驱动
         ClientTickEvents.START_CLIENT_TICK.register(client -> {
-            applyPlayerSimulation(client);
             ScriptEngine.getInstance().onClientTick();
         });
 
         LOGGER.info("Pendulum client initialized.");
-    }
-
-    /** 每 tick 将 PlayerSimulator 的状态同步到玩家 input。 */
-    private void applyPlayerSimulation(Minecraft client) {
-        LocalPlayer player = client.player;
-        if (player == null) return;
-
-        PlayerSimulator sim = PlayerSimulator.getInstance();
-
-        player.input.forwardImpulse = 0;
-        player.input.leftImpulse = 0;
-
-        if (sim.isForward()) player.input.forwardImpulse = 1.0f;
-        if (sim.isBackward()) player.input.forwardImpulse = -1.0f;
-        if (sim.isLeft()) player.input.leftImpulse = 1.0f;
-        if (sim.isRight()) player.input.leftImpulse = -1.0f;
-
-        if (sim.consumeJump()) {
-            player.input.jumping = true;
-        }
-        if (sim.consumeSneak()) {
-            player.input.shiftKeyDown = true;
-        }
-        if (sim.consumeSprint()) {
-            player.setSprinting(true);
-        }
-        if (sim.consumeSprintOff()) {
-            player.setSprinting(false);
-        }
-
-        Float yaw = sim.consumeTargetYaw();
-        Float pitch = sim.consumeTargetPitch();
-        if (yaw != null) player.setYRot(yaw);
-        if (pitch != null) player.setXRot(pitch);
     }
 }

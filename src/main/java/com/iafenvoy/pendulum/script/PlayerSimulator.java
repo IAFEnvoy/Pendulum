@@ -21,6 +21,8 @@ public final class PlayerSimulator {
     private BlockPos breakingPos;
     private Direction breakingDir;
     private boolean breaking;
+    // 保存原始的 KeyboardInput，以便模拟结束后恢复
+    private Object originalInput;
 
     private PlayerSimulator() {}
 
@@ -73,6 +75,14 @@ public final class PlayerSimulator {
     public boolean isLeft() { return left; }
     public boolean isRight() { return right; }
 
+    /** 是否有任何模拟活动（移动/破坏），用于 Mixin 判断是否替换 input */
+    public boolean isActive() {
+        return forward || backward || left || right || jumpHold || sneak || sprint || breaking;
+    }
+
+    public boolean isSneakHold() { return sneak; }
+    public boolean isSprinting() { return sprint; }
+
     public boolean consumeJump() {
         boolean v = jump;
         jump = false;
@@ -109,4 +119,8 @@ public final class PlayerSimulator {
     public boolean isBreaking() { return breaking; }
     public BlockPos getBreakingPos() { return breakingPos; }
     public Direction getBreakingDir() { return breakingDir; }
+
+    /** Mixin 用：保存/恢复玩家原始的 KeyboardInput */
+    public void setOriginalInput(Object input) { this.originalInput = input; }
+    public Object getOriginalInput() { return originalInput; }
 }
