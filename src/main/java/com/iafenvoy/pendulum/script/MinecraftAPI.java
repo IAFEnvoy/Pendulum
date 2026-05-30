@@ -1,5 +1,6 @@
 package com.iafenvoy.pendulum.script;
 
+import com.iafenvoy.pendulum.config.PendulumConfig;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -42,7 +43,9 @@ public final class MinecraftAPI {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Minecraft MC = Minecraft.getInstance();
 
-    /** minecraft 对象上暴露的所有函数名 */
+    /**
+     * minecraft 对象上暴露的所有函数名
+     */
     public static final List<String> FUNCTION_NAMES = Arrays.asList(
             // 移动
             "forward", "back", "left", "right", "stop",
@@ -73,7 +76,9 @@ public final class MinecraftAPI {
 
     // ==================== 移动 ====================
 
-    /** forward() — 一直按住前；forward(ticks) — 前进 ticks 刻后自动停止 */
+    /**
+     * forward() — 一直按住前；forward(ticks) — 前进 ticks 刻后自动停止
+     */
     public static void forward(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (args.length > 0) {
             moveFor("forward", ((Number) args[0]).intValue());
@@ -82,7 +87,9 @@ public final class MinecraftAPI {
         }
     }
 
-    /** back() — 一直按住后；back(ticks) — 后退 ticks 刻后自动停止 */
+    /**
+     * back() — 一直按住后；back(ticks) — 后退 ticks 刻后自动停止
+     */
     public static void back(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (args.length > 0) {
             moveFor("back", ((Number) args[0]).intValue());
@@ -91,7 +98,9 @@ public final class MinecraftAPI {
         }
     }
 
-    /** left() — 一直按住左；left(ticks) — 左移 ticks 刻后自动停止 */
+    /**
+     * left() — 一直按住左；left(ticks) — 左移 ticks 刻后自动停止
+     */
     public static void left(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (args.length > 0) {
             moveFor("left", ((Number) args[0]).intValue());
@@ -100,7 +109,9 @@ public final class MinecraftAPI {
         }
     }
 
-    /** right() — 一直按住右；right(ticks) — 右移 ticks 刻后自动停止 */
+    /**
+     * right() — 一直按住右；right(ticks) — 右移 ticks 刻后自动停止
+     */
     public static void right(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (args.length > 0) {
             moveFor("right", ((Number) args[0]).intValue());
@@ -114,10 +125,18 @@ public final class MinecraftAPI {
             PlayerSimulator sim = PlayerSimulator.getInstance();
             sim.stopAll();
             switch (dir) {
-                case "forward": sim.setForward(true); break;
-                case "back": sim.setBackward(true); break;
-                case "left": sim.setLeft(true); break;
-                case "right": sim.setRight(true); break;
+                case "forward":
+                    sim.setForward(true);
+                    break;
+                case "back":
+                    sim.setBackward(true);
+                    break;
+                case "left":
+                    sim.setLeft(true);
+                    break;
+                case "right":
+                    sim.setRight(true);
+                    break;
             }
         });
     }
@@ -127,10 +146,18 @@ public final class MinecraftAPI {
             PlayerSimulator sim = PlayerSimulator.getInstance();
             sim.stopAll();
             switch (dir) {
-                case "forward": sim.setForward(true); break;
-                case "back": sim.setBackward(true); break;
-                case "left": sim.setLeft(true); break;
-                case "right": sim.setRight(true); break;
+                case "forward":
+                    sim.setForward(true);
+                    break;
+                case "back":
+                    sim.setBackward(true);
+                    break;
+                case "left":
+                    sim.setLeft(true);
+                    break;
+                case "right":
+                    sim.setRight(true);
+                    break;
             }
         });
         ScriptEngine.waitTicks(ticks);
@@ -143,7 +170,7 @@ public final class MinecraftAPI {
 
     public static void jump(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         boolean hold = args.length > 0 && Context.toBoolean(args[0]);
-        ScriptEngine.runOnGameThread(() -> PlayerSimulator.getInstance().setJump(hold || true));
+        ScriptEngine.runOnGameThread(() -> PlayerSimulator.getInstance().setJump(true));
     }
 
     public static void sneak(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
@@ -220,29 +247,40 @@ public final class MinecraftAPI {
 
     // ==================== 交互 ====================
 
-    /** 使用物品/与方块交互，等待 1 tick 完成 */
+    /**
+     * 使用物品/与方块交互
+     */
     public static void use(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (MC.player == null || MC.gameMode == null) return;
         ScriptEngine.submitToGameThread(() -> MC.gameMode.useItem(MC.player, InteractionHand.MAIN_HAND));
-        ScriptEngine.waitTicks(1);
+        if (PendulumConfig.INSTANCE.syncUseAttack()) {
+            ScriptEngine.waitTicks(1);
+        }
     }
 
-    /** 攻击实体，等待 2 tick 完成 */
+    /**
+     * 攻击实体
+     */
     public static void attack(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (MC.player == null || MC.gameMode == null) return;
         ScriptEngine.submitToGameThread(() -> MC.gameMode.attack(MC.player, MC.crosshairPickEntity));
-        ScriptEngine.waitTicks(2);
+        if (PendulumConfig.INSTANCE.syncUseAttack()) {
+            ScriptEngine.waitTicks(2);
+        }
     }
 
-    /** 破坏视线对准的方块，持续按住直到破坏（同步等待）。注意射线可能打到障碍物，精准破坏推荐 breakBlockAt */
+    /**
+     * 破坏视线对准的方块，持续按住直到破坏（同步等待）。注意射线可能打到障碍物，精准破坏推荐 breakBlockAt
+     */
     public static boolean breakBlock(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         BlockPos[] posHolder = new BlockPos[1];
         net.minecraft.core.Direction[] dirHolder = new net.minecraft.core.Direction[1];
+        double rayDist = PendulumConfig.INSTANCE.rayTraceDistance();
         ScriptEngine.submitToGameThread(() -> {
             if (MC.player == null || MC.gameMode == null || MC.level == null) return;
             Vec3 start = MC.player.getEyePosition();
             Vec3 look = MC.player.getLookAngle();
-            Vec3 end = start.add(look.x * 5.0, look.y * 5.0, look.z * 5.0);
+            Vec3 end = start.add(look.x * rayDist, look.y * rayDist, look.z * rayDist);
             ClipContext ctx = new ClipContext(start, end, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, MC.player);
             BlockHitResult bhr = MC.level.clip(ctx);
             if (bhr.getType() != HitResult.Type.MISS) {
@@ -254,7 +292,9 @@ public final class MinecraftAPI {
         return doBreak(posHolder[0], dirHolder[0]);
     }
 
-    /** 直接破坏指定坐标的方块（无需射线追踪，不会挖错）。配合 findBlocks 使用。同步等待。 */
+    /**
+     * 直接破坏指定坐标的方块（无需射线追踪，不会挖错）。配合 findBlocks 使用。同步等待。
+     */
     public static boolean breakBlockAt(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int x = ((Number) args[0]).intValue();
         int y = ((Number) args[1]).intValue();
@@ -271,7 +311,10 @@ public final class MinecraftAPI {
                 double cy2 = pos.getY() + 0.5 + d.getStepY() * 0.5;
                 double cz2 = pos.getZ() + 0.5 + d.getStepZ() * 0.5;
                 double dist = eye.distanceToSqr(cx2, cy2, cz2);
-                if (dist < bestDist) { bestDist = dist; best = d; }
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    best = d;
+                }
             }
             dirHolder[0] = best;
         });
@@ -357,7 +400,9 @@ public final class MinecraftAPI {
         });
     }
 
-    /** 左键点击槽位，等待 1 tick 完成 */
+    /**
+     * 左键点击槽位，等待 1 tick 完成
+     */
     public static void clickSlot(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int slotId = ((Number) args[0]).intValue();
         int button = args.length > 1 ? ((Number) args[1]).intValue() : 0;
@@ -370,7 +415,9 @@ public final class MinecraftAPI {
         ScriptEngine.waitTicks(1);
     }
 
-    /** 右键点击槽位，等待 1 tick 完成 */
+    /**
+     * 右键点击槽位，等待 1 tick 完成
+     */
     public static void clickSlotRight(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int slotId = ((Number) args[0]).intValue();
         ScriptEngine.submitToGameThread(() -> {
@@ -382,7 +429,9 @@ public final class MinecraftAPI {
         ScriptEngine.waitTicks(1);
     }
 
-    /** 合成一次，等待 1 tick 完成 */
+    /**
+     * 合成一次，等待 1 tick 完成
+     */
     public static void craft(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         ScriptEngine.submitToGameThread(() -> {
             if (!(MC.screen instanceof AbstractContainerScreen<?> screen)) return;
@@ -393,7 +442,9 @@ public final class MinecraftAPI {
         ScriptEngine.waitTicks(1);
     }
 
-    /** 合成全部，等待 1 tick 完成 */
+    /**
+     * 合成全部，等待 1 tick 完成
+     */
     public static void craftAll(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         ScriptEngine.submitToGameThread(() -> {
             if (!(MC.screen instanceof AbstractContainerScreen<?> screen)) return;
@@ -473,7 +524,9 @@ public final class MinecraftAPI {
         NativeArray result = (NativeArray) cx.newArray(thisObj, 0);
         for (int[] p : positions) {
             Scriptable obj = cx.newObject(thisObj);
-            obj.put("x", obj, p[0]); obj.put("y", obj, p[1]); obj.put("z", obj, p[2]);
+            obj.put("x", obj, p[0]);
+            obj.put("y", obj, p[1]);
+            obj.put("z", obj, p[2]);
             result.put(result.size(), result, obj);
         }
         return result;
@@ -504,7 +557,9 @@ public final class MinecraftAPI {
         NativeArray result = (NativeArray) cx.newArray(thisObj, 0);
         for (int[] p : positions) {
             Scriptable obj = cx.newObject(thisObj);
-            obj.put("x", obj, p[0]); obj.put("y", obj, p[1]); obj.put("z", obj, p[2]);
+            obj.put("x", obj, p[0]);
+            obj.put("y", obj, p[1]);
+            obj.put("z", obj, p[2]);
             result.put(result.size(), result, obj);
         }
         return result;
@@ -514,8 +569,12 @@ public final class MinecraftAPI {
      * 在矩形区域内查找指定方块（未指定 blockId 则返回所有非空气方块）。
      */
     public static Scriptable findBlocksInBox(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-        int x1 = ((Number) args[0]).intValue(); int y1 = ((Number) args[1]).intValue(); int z1 = ((Number) args[2]).intValue();
-        int x2 = ((Number) args[3]).intValue(); int y2 = ((Number) args[4]).intValue(); int z2 = ((Number) args[5]).intValue();
+        int x1 = ((Number) args[0]).intValue();
+        int y1 = ((Number) args[1]).intValue();
+        int z1 = ((Number) args[2]).intValue();
+        int x2 = ((Number) args[3]).intValue();
+        int y2 = ((Number) args[4]).intValue();
+        int z2 = ((Number) args[5]).intValue();
         String blockId = args.length > 6 ? Context.toString(args[6]) : null;
         List<Object[]> entries = ScriptEngine.submitToGameThread(() -> {
             List<Object[]> list = new ArrayList<>();
@@ -537,16 +596,22 @@ public final class MinecraftAPI {
         NativeArray result = (NativeArray) cx.newArray(thisObj, 0);
         for (Object[] e : entries) {
             Scriptable obj = cx.newObject(thisObj);
-            obj.put("x", obj, (int) e[0]); obj.put("y", obj, (int) e[1]); obj.put("z", obj, (int) e[2]);
-            if (e[3] != null) obj.put("block", obj, (String) e[3]);
+            obj.put("x", obj, e[0]);
+            obj.put("y", obj, e[1]);
+            obj.put("z", obj, e[2]);
+            if (e[3] != null) obj.put("block", obj, e[3]);
             result.put(result.size(), result, obj);
         }
         return result;
     }
 
-    /** 判断 (x,y,z) 处方块是否匹配给定 ID */
+    /**
+     * 判断 (x,y,z) 处方块是否匹配给定 ID
+     */
     public static boolean isBlock(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-        int x = ((Number) args[0]).intValue(); int y = ((Number) args[1]).intValue(); int z = ((Number) args[2]).intValue();
+        int x = ((Number) args[0]).intValue();
+        int y = ((Number) args[1]).intValue();
+        int z = ((Number) args[2]).intValue();
         String blockId = Context.toString(args[3]);
         return ScriptEngine.submitToGameThread(() -> {
             if (MC.level == null) return false;
@@ -555,9 +620,13 @@ public final class MinecraftAPI {
         });
     }
 
-    /** 判断 (x,y,z) 处方块是否匹配给定 Tag */
+    /**
+     * 判断 (x,y,z) 处方块是否匹配给定 Tag
+     */
     public static boolean isBlockByTag(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-        int x = ((Number) args[0]).intValue(); int y = ((Number) args[1]).intValue(); int z = ((Number) args[2]).intValue();
+        int x = ((Number) args[0]).intValue();
+        int y = ((Number) args[1]).intValue();
+        int z = ((Number) args[2]).intValue();
         String tagStr = Context.toString(args[3]);
         return ScriptEngine.submitToGameThread(() -> {
             if (MC.level == null) return false;
@@ -596,10 +665,12 @@ public final class MinecraftAPI {
         NativeArray result = (NativeArray) cx.newArray(thisObj, 0);
         for (Object[] e : entities) {
             Scriptable obj = cx.newObject(thisObj);
-            obj.put("name", obj, (String) e[0]);
-            obj.put("type", obj, (String) e[1]);
-            obj.put("x", obj, (double) e[2]); obj.put("y", obj, (double) e[3]); obj.put("z", obj, (double) e[4]);
-            obj.put("distance", obj, (double) e[5]);
+            obj.put("name", obj, e[0]);
+            obj.put("type", obj, e[1]);
+            obj.put("x", obj, e[2]);
+            obj.put("y", obj, e[3]);
+            obj.put("z", obj, e[4]);
+            obj.put("distance", obj, e[5]);
             result.put(result.size(), result, obj);
         }
         return result;
@@ -624,9 +695,11 @@ public final class MinecraftAPI {
         NativeArray result = (NativeArray) cx.newArray(thisObj, 0);
         for (Object[] p : players) {
             Scriptable obj = cx.newObject(thisObj);
-            obj.put("name", obj, (String) p[0]);
-            obj.put("x", obj, (double) p[1]); obj.put("y", obj, (double) p[2]); obj.put("z", obj, (double) p[3]);
-            obj.put("distance", obj, (double) p[4]);
+            obj.put("name", obj, p[0]);
+            obj.put("x", obj, p[1]);
+            obj.put("y", obj, p[2]);
+            obj.put("z", obj, p[3]);
+            obj.put("distance", obj, p[4]);
             result.put(result.size(), result, obj);
         }
         return result;
@@ -659,7 +732,10 @@ public final class MinecraftAPI {
                 var cr = bb.clip(start, end);
                 if (cr.isPresent()) {
                     double d = start.distanceTo(cr.get());
-                    if (d < entityDist) { entityDist = d; entityHit = new EntityHitResult(e, cr.get()); }
+                    if (d < entityDist) {
+                        entityDist = d;
+                        entityHit = new EntityHitResult(e, cr.get());
+                    }
                 }
             }
 
@@ -705,7 +781,7 @@ public final class MinecraftAPI {
         String msg = Context.toString(args[0]);
         ScriptEngine.submitToGameThread(() -> {
             if (MC.player != null)
-                MC.player.displayClientMessage(Component.literal("§e[Pendulum] §r" + msg), false);
+                MC.player.displayClientMessage(Component.literal("§e[Pendulum] §r").append(msg), false);
         });
     }
 
@@ -721,7 +797,9 @@ public final class MinecraftAPI {
 
     // ==================== 文件/控制 ====================
 
-    /** 暂停脚本执行 ticks 个游戏刻（默认 1） */
+    /**
+     * 暂停脚本执行 ticks 个游戏刻（默认 1）
+     */
     public static void waitTick(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int ticks = args.length > 0 ? ((Number) args[0]).intValue() : 1;
         ScriptEngine.waitTicks(ticks);
@@ -739,23 +817,23 @@ public final class MinecraftAPI {
     // ==================== 帮助（供 JS 和命令共同使用） ====================
 
     public static String helpString() {
-        return "§6=== Pendulum minecraft API ===\n" +
-                "§e移动:§r forward(ticks?), back(ticks?), left(ticks?), right(ticks?), stop() — 无参=持续按住, 有参=移动指定tick\n" +
-                "  §7jump(hold?), sneak(hold?), sprint(hold?), stopSprint()\n" +
-                "§e旋转:§r lookAt(x,y,z), setYaw(y), setPitch(p), getYaw(), getPitch()\n" +
-                "§e位置:§r getX(), getY(), getZ()\n" +
-                "§e交互:§r use(), attack(), breakBlock(), breakBlockAt(x,y,z), swapHands(), drop(), dropAll(), pickBlock()\n" +
-                "§e物品栏:§r selectHotbar(1-9), getSelectedSlot(), hasItem('minecraft:stone', count)\n" +
-                "§eGUI:§r closeGui(), isGuiOpen(), getGuiTitle(), clickSlot(id), clickSlotRight(id)\n" +
-                "§e合成:§r craft(), craftAll()\n" +
-                "§e世界查询:§r findBlocks('id',radius), findBlocksByTag('tag',radius), findBlocksInBox(x1,y1,z1,x2,y2,z2,'id'?),\n" +
-                "  §7isBlock(x,y,z,'id'), isBlockByTag(x,y,z,'tag'), getBlock(x,y,z),\n" +
-                "  §7getNearbyEntities(radius,'type'?), getNearbyPlayers(radius), rayTrace(maxDist)\n" +
-                "§e地图:§r facingBlock('id'), facingEntity('id'), getFacingBlock()\n" +
-                "§e聊天:§r say('msg'), log('msg')\n" +
-                "§e文件:§r execFile('path.js'), getScriptDir(), waitTick(ticks=1)\n" +
-                "§eBaritone对象 (br/baritone):§r br.help() 查看完整列表\n" +
-                "§e控制:§r help()";
+        return "§6" + net.minecraft.client.resources.language.I18n.get("pendulum.help.title") + "\n" +
+                "§e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.movement") + "\n" +
+                "  §7" + net.minecraft.client.resources.language.I18n.get("pendulum.help.movement2") + "\n" +
+                "§e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.rotation") + "\n" +
+                "§e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.position") + "\n" +
+                "§e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.interaction") + "\n" +
+                "§e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.inventory") + "\n" +
+                "§e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.gui") + "\n" +
+                "§e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.crafting") + "\n" +
+                "§e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.world_query") + "\n" +
+                "  §7" + net.minecraft.client.resources.language.I18n.get("pendulum.help.world_query2") + "\n" +
+                "  §7" + net.minecraft.client.resources.language.I18n.get("pendulum.help.world_query3") + "\n" +
+                "§e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.facing") + "\n" +
+                "§e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.chat") + "\n" +
+                "§e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.files") + "\n" +
+                "§e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.baritone") + "\n" +
+                "§e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.control");
     }
 
     public static void help(Context cx, Scriptable thisObj, Object[] args, Function funObj) {

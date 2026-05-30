@@ -1,7 +1,9 @@
 package com.iafenvoy.pendulum;
 
+import com.iafenvoy.pendulum.config.PendulumConfig;
 import com.iafenvoy.pendulum.script.MinecraftAPI;
 import com.iafenvoy.pendulum.script.ScriptEngine;
+import com.iafenvoy.jupiter.ConfigManager;
 import com.mojang.logging.LogUtils;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
@@ -19,13 +21,22 @@ public final class PendulumClient implements ClientModInitializer {
     public void onInitializeClient() {
         LOGGER.info("Pendulum client initializing...");
 
+        // Register config
+        ConfigManager.getInstance().registerConfigHandler(PendulumConfig.INSTANCE);
+
         ScriptEngine.getInstance().initialize();
 
-        // 脚本结束回调
+        // 脚本结束回调 — msg can be a translation key or raw text
         ScriptEngine.getInstance().setScriptEndListener(msg -> {
             if (Minecraft.getInstance().player != null) {
-                Minecraft.getInstance().player.displayClientMessage(
-                        Component.literal("§e[Pendulum] §r" + msg), false);
+                Component prefix = Component.literal("§e[Pendulum] §r");
+                Component body;
+                if (msg.startsWith("pendulum.")) {
+                    body = Component.translatable(msg);
+                } else {
+                    body = Component.literal(msg);
+                }
+                Minecraft.getInstance().player.displayClientMessage(prefix.copy().append(body), false);
             }
         });
 
@@ -72,16 +83,16 @@ public final class PendulumClient implements ClientModInitializer {
                                 ScriptEngine.getInstance().abort();
                                 if (Minecraft.getInstance().player != null) {
                                     Minecraft.getInstance().player.displayClientMessage(
-                                            Component.literal("§cScript aborted."), false);
+                                            Component.translatable("pendulum.command.aborted").withStyle(net.minecraft.ChatFormatting.RED), false);
                                 }
                                 return 1;
                             }))
                     .then(ClientCommandManager.literal("status")
                             .executes(ctx -> {
-                                String status = ScriptEngine.getInstance().getStatus();
+                                String key = ScriptEngine.getInstance().getStatus();
                                 if (Minecraft.getInstance().player != null) {
                                     Minecraft.getInstance().player.displayClientMessage(
-                                            Component.literal(status), false);
+                                            Component.translatable(key), false);
                                 }
                                 return 1;
                             }))
@@ -90,7 +101,7 @@ public final class PendulumClient implements ClientModInitializer {
                                 String dir = ScriptEngine.getInstance().getScriptDir().toString();
                                 if (Minecraft.getInstance().player != null) {
                                     Minecraft.getInstance().player.displayClientMessage(
-                                            Component.literal("§eScript dir: §r" + dir), false);
+                                            Component.translatable("pendulum.status.script_dir", dir), false);
                                 }
                                 return 1;
                             }));

@@ -1,170 +1,59 @@
-# Pendulum
+﻿# Pendulum
 
-Client-side JavaScript script executor for Minecraft. Control your player with JS scripts — automate movement, block breaking, crafting, GUI interactions, and world queries.
+Client-side JavaScript script executor for Minecraft. Automate player actions — movement, block breaking, inventory, world queries, and Baritone integration.
 
 ## Install
 
-- Requires **Fabric Loader** + **Fabric API** (1.20.1)
+- **Minecraft 1.20.1** + **Fabric Loader** + **Fabric API** (`>=0.92.0`)
 - Drop the jar into `mods/`
+- **Baritone** is optional — install it to unlock `baritone.*` / `br.*` functions
 
 ## Commands
 
-All commands use `/pendulum` as root.
+| Command | Description |
+|---------|-------------|
+| `/pendulum execute <code>` | Run JS inline |
+| `/pendulum file <path>` | Run `.js` from `.minecraft/pendulum/` |
+| `/pendulum abort` | Stop running script |
+| `/pendulum status` | Show current script state |
+| `/pendulum help` | Show API overview |
 
-| Command | Usage | Description |
-|---------|-------|-------------|
-| `/pendulum` | — | Show API overview (same as `/pendulum help`) |
-| `/pendulum help` | — | Show API function list |
-| `/pendulum execute <code>` | `/pendulum execute minecraft.forward(); minecraft.jump()` | Run JS code inline |
-| `/pendulum file <path>` | `/pendulum file mine_stone.js` | Run a script from `.minecraft/pendulum/<path>` |
-| `/pendulum abort` | — | Stop the currently running script |
-| `/pendulum status` | — | Show current script state and pending action |
-| `/pendulum dir` | — | Print the absolute path of the script directory |
+> Only one script runs at a time. `/pendulum abort` if needed.
 
-> Only one script can run at a time. Use `/pendulum abort` to stop the current one before starting a new one.
+## Objects
 
-## Minecraft API (`minecraft.*`)
+| Object | Aliases | Purpose |
+|--------|---------|---------|
+| `minecraft` | `mc`, `game` | Player control, world queries, inventory, GUI |
+| `baritone` | `br` | Baritone automation (optional) |
+| `console` | — | `console.log(...)` -> game log |
 
-All functions live on the global `minecraft` object. You can also use `console.log(...)` for debug output to the game log.
-
-### Movement
-
-| Function | Description |
-|----------|-------------|
-| `forward()` / `back()` / `left()` / `right()` | Hold movement key (calls `stop()` internally first) |
-| `stop()` | Release all movement keys |
-| `jump(hold?)` | `jump()` = single jump, `jump(true)` = hold jump key |
-| `sneak(hold?)` | `sneak()` = toggle on, `sneak(false)` = off |
-| `sprint(hold?)` | `sprint()` = toggle on, `sprint(false)` = off |
-| `stopSprint()` | Stop sprinting |
-| `lookAt(x, y, z)` | Rotate camera to look at coordinates |
-| `setYaw(y)` / `setPitch(p)` | Set yaw/pitch directly |
-| `getYaw()` / `getPitch()` | Get current rotation |
-| `getX()` / `getY()` / `getZ()` | Get player position |
+## Quick Example
 
 ```js
-// Walk forward for 3 seconds, then jump
-minecraft.forward();
-// ...time passes...
-minecraft.jump();
-minecraft.stop();
-```
+mc.forward(20);                       // walk forward 1 second
 
-### Interaction (Synchronous — returns when action completes)
-
-| Function | Returns | Description |
-|----------|---------|-------------|
-| `use()` | — | Use held item / interact with block (waits 1 tick) |
-| `attack()` | — | Attack entity / start breaking block (waits 2 ticks) |
-| `breakBlock()` | `boolean` | Break the crosshair-targeted block. Blocks until broken or timeout (10s). Returns `true` on success. |
-| `swapHands()` | — | Swap main/off hand items |
-| `drop()` / `dropAll()` | — | Drop 1 / all of held stack |
-| `pickBlock()` | — | Pick block (middle-click) |
-
-```js
-minecraft.lookAt(100, 64, 200);
-var ok = minecraft.breakBlock();
-if (ok) minecraft.log("Block broken!");
-```
-
-### Inventory
-
-| Function | Description |
-|----------|-------------|
-| `selectHotbar(n)` | Switch to hotbar slot 1-9 |
-| `getSelectedSlot()` | Get current hotbar slot (1-9) |
-| `hasItem(id, count?)` | Check if inventory has item. `id` is `"minecraft:stone"` format |
-
-```js
-if (minecraft.hasItem("minecraft:cobblestone", 64)) {
-    minecraft.log("Got a full stack!");
+// Mine all pumpkins in range
+for (let {x,y,z} of mc.findBlocks("minecraft:pumpkin", 8)) {
+    mc.lookAt(x, y, z); mc.waitTick(2);
+    mc.breakBlockAt(x, y, z);
 }
 ```
 
-### GUI & Crafting (Synchronous)
+## API Summary
 
-| Function | Description |
-|----------|-------------|
-| `closeGui()` | Close current screen |
-| `isGuiOpen()` → `boolean` | Is any GUI open |
-| `getGuiTitle()` → `string` | Get current GUI title |
-| `clickSlot(slotId, button?)` | Left-click a slot (button: 0=left, 1=right). Waits 1 tick. |
-| `clickSlotRight(slotId)` | Right-click a slot. Waits 1 tick. |
-| `craft()` | Craft once from workbench (click output slot). Waits 1 tick. |
-| `craftAll()` | Craft all from workbench (shift-click output slot). Waits 1 tick. |
+**Movement** `forward(ticks?)` `back(ticks?)` `left(ticks?)` `right(ticks?)` `stop()` `jump(hold?)` `sneak(hold?)` `sprint(hold?)` `stopSprint()` `lookAt(x,y,z)` `setYaw(y)` `setPitch(p)` `getYaw()` `getPitch()` `getX()` `getY()` `getZ()`
 
-```js
-// Open a chest and take the first item
-minecraft.isGuiOpen();       // true
-minecraft.clickSlot(0);      // left-click slot 0
-minecraft.closeGui();
-```
+**Interaction** `breakBlock()` `breakBlockAt(x,y,z)` `use()` `attack()` `swapHands()` `drop()` `dropAll()` `pickBlock()`
 
-### World Query
+**Inventory & GUI** `selectHotbar(1-9)` `getSelectedSlot()` `hasItem(id,count?)` `closeGui()` `isGuiOpen()` `getGuiTitle()` `clickSlot(id,button?)` `clickSlotRight(id)` `craft()` `craftAll()`
 
-| Function | Returns | Description |
-|----------|---------|-------------|
-| `getBlock(x, y, z)` | `string` | Get block ID at position |
-| `isBlock(x, y, z, id)` | `boolean` | Check if block at position matches ID |
-| `isBlockByTag(x, y, z, tag)` | `boolean` | Check if block at position matches tag |
-| `findBlocks(id, radius?)` | `[{x,y,z}]` | Find blocks by ID in sphere around player (default radius 16) |
-| `findBlocksByTag(tag, radius?)` | `[{x,y,z}]` | Find blocks by tag in sphere around player |
-| `findBlocksInBox(x1,y1,z1, x2,y2,z2, id?)` | `[{x,y,z,block?}]` | Scan rectangular area. Omit `id` to return all non-air blocks (includes `block` field). |
-| `getNearbyEntities(radius, type?)` | `[{name,type,x,y,z,distance}]` | Find entities in range. Optional type filter e.g. `"minecraft:creeper"`. |
-| `getNearbyPlayers(radius)` | `[{name,x,y,z,distance}]` | Find nearby players (excludes self) |
-| `rayTrace(maxDist?)` | `{type,x,y,z,...}` | Cast ray from player view. Returns `type: "block"|"entity"|"miss"`. |
-| `facingBlock(id)` | `boolean` | Is crosshair pointing at given block |
-| `facingEntity(id)` | `boolean` | Is crosshair pointing at given entity |
-| `getFacingBlock()` | `string` | Get the block ID under crosshair |
+**World Query** `getBlock(x,y,z)` `isBlock(x,y,z,id)` `isBlockByTag(x,y,z,tag)` `facingBlock(id)` `facingEntity(id)` `getFacingBlock()` `findBlocks(id,radius?)` `findBlocksByTag(tag,radius?)` `findBlocksInBox(x1,y1,z1,x2,y2,z2,id?)` `getNearbyEntities(radius,type?)` `getNearbyPlayers(radius)` `rayTrace(maxDist?)`
 
-```js
-var ores = minecraft.findBlocks("minecraft:diamond_ore", 32);
-minecraft.log("Found " + ores.length + " diamond ores");
-for (var i = 0; i < ores.length; i++) {
-    minecraft.log(ores[i].x + ", " + ores[i].y + ", " + ores[i].z);
-}
+**Chat & Control** `say(msg)` `log(msg)` `waitTick(ticks?)` `execFile(path)` `getScriptDir()` `help()`
 
-var hit = minecraft.rayTrace(10);
-if (hit.type === "block") {
-    minecraft.log("Looking at: " + minecraft.getBlock(hit.x, hit.y, hit.z));
-}
+**Baritone (`br.*`)** `goto(x,y,z)` `mine(id,count?)` `tunnel()` `follow(type?)` `farm(range?)` `explore()` `getToBlock(id)` `build(schematic,x?,y?,z?)` `come()` `surface()` `axis()` `thisWay()` `pickup()` `click()` `stop()` `pause()` `resume()` `isActive()` `isPaused()` `command(cmd)` `setting(key,val)` `select(x1,y1,z1,x2,y2,z2)` `selPos1()` `selPos2()` `clearSelection()` `waypointSave/List/Delete()` `sethome()` `home()` `find(id)` `blacklist()` `proc()` `eta()` `help()`
 
-var creepers = minecraft.getNearbyEntities(32, "minecraft:creeper");
-minecraft.log(creepers.length + " creepers nearby");
-```
+## Documentation
 
-### Chat & Files
-
-| Function | Description |
-|----------|-------------|
-| `say(msg)` | Send chat message to server |
-| `log(msg)` | Print client-side message (not sent to server) |
-| `execFile(path)` | Execute another script from `pendulum/` folder |
-| `getScriptDir()` → `string` | Get absolute path of script directory |
-| `help()` | Print API overview in chat |
-
-```js
-minecraft.log("Starting mining routine...");
-minecraft.execFile("mining/pick_ores.js");
-```
-
-## Script Files
-
-Place `.js` files in `.minecraft/pendulum/` and run with `/pendulum file <path>`.
-
-Example: `.minecraft/pendulum/strip_mine.js`
-
-```js
-// Strip mine: break 20 blocks forward
-for (var i = 0; i < 20; i++) {
-    minecraft.lookAt(
-        Math.floor(minecraft.getX()) + 1,
-        Math.floor(minecraft.getY()),
-        Math.floor(minecraft.getZ())
-    );
-    var ok = minecraft.breakBlock();
-    if (!ok) { minecraft.log("Timeout!"); break; }
-    minecraft.forward();
-}
-minecraft.log("Done!");
-```
+Full API reference with examples: **[wiki/](wiki/docs/intro.md)**

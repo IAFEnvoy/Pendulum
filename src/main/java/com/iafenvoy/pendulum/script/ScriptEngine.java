@@ -1,7 +1,9 @@
 package com.iafenvoy.pendulum.script;
 
+import com.iafenvoy.pendulum.config.PendulumConfig;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
 import org.mozilla.javascript.*;
 import org.slf4j.Logger;
@@ -34,7 +36,8 @@ public final class ScriptEngine {
     private volatile String currentSource;
     private volatile Future<?> currentFuture;
 
-    private ScriptEngine() {}
+    private ScriptEngine() {
+    }
 
     private static final class Holder {
         static final ScriptEngine INSTANCE = new ScriptEngine();
@@ -87,32 +90,49 @@ public final class ScriptEngine {
     static <T> T submitToGameThread(Supplier<T> task) {
         CompletableFuture<T> future = new CompletableFuture<>();
         getInstance().gameTasks.add(() -> {
-            try { future.complete(task.get()); }
-            catch (Throwable t) { future.completeExceptionally(t); }
+            try {
+                future.complete(task.get());
+            } catch (Throwable t) {
+                future.completeExceptionally(t);
+            }
         });
-        try { return future.get(); }
-        catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new RuntimeException("aborted", e); }
-        catch (ExecutionException e) { throw new RuntimeException(e.getCause()); }
+        try {
+            return future.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("aborted", e);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e.getCause());
+        }
     }
 
     static void submitToGameThread(Runnable task) {
-        submitToGameThread(() -> { task.run(); return null; });
+        submitToGameThread(() -> {
+            task.run();
+            return null;
+        });
     }
 
-    /** fire-and-forget：只入队不阻塞，适合 move 等简单状态设置 */
+    /**
+     * fire-and-forget：只入队不阻塞，适合 move 等简单状态设置
+     */
     static void runOnGameThread(Runnable task) {
         getInstance().gameTasks.add(task);
     }
 
-    /** 在 JS 线程调用：等待方块破坏完成 */
+    /**
+     * 在 JS 线程调用：等待方块破坏完成
+     */
     static boolean waitForBreak() {
-        long deadline = System.currentTimeMillis() + 10000L;
+        int timeoutTicks = PendulumConfig.INSTANCE.breakTimeout();
+        long deadline = System.currentTimeMillis() + ((long) timeoutTicks * PendulumConfig.INSTANCE.tickIntervalMs());
         while (System.currentTimeMillis() < deadline) {
             boolean[] done = {false};
             submitToGameThread(() -> {
                 Minecraft mc = Minecraft.getInstance();
                 PlayerSimulator sim = PlayerSimulator.getInstance();
-                if (mc.level != null && mc.level.getBlockState(sim.getBreakingPos()).isAir()) {
+                BlockPos pos = sim.getBreakingPos();
+                if (mc.level != null && pos != null && mc.level.getBlockState(pos).isAir()) {
                     done[0] = true;
                 }
             });
@@ -122,12 +142,20 @@ public final class ScriptEngine {
         return false;
     }
 
-    /** 让 JS 线程等待一个游戏 tick */
+    /**
+     * 让 JS 线程等待一个游戏 tick
+     */
     private static void singleTickSleep() {
-        try { Thread.sleep(50); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        try {
+            Thread.sleep(PendulumConfig.INSTANCE.tickIntervalMs());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
-    /** 在 JS 线程调用：等待 ticks 个游戏刻 */
+    /**
+     * 在 JS 线程调用：等待 ticks 个游戏刻
+     */
     static void waitTicks(int ticks) {
         for (int i = 0; i < ticks; i++) singleTickSleep();
     }
@@ -148,12 +176,14 @@ public final class ScriptEngine {
         if (!sim.isBreaking()) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.gameMode == null || mc.level == null) return;
-        BlockState state = mc.level.getBlockState(sim.getBreakingPos());
+        BlockPos pos = sim.getBreakingPos();
+        if (pos == null) return;
+        BlockState state = mc.level.getBlockState(pos);
         if (state.isAir()) {
             mc.gameMode.stopDestroyBlock();
             sim.stopBreaking();
         } else {
-            mc.gameMode.continueDestroyBlock(sim.getBreakingPos(), sim.getBreakingDir());
+            mc.gameMode.continueDestroyBlock(pos, sim.getBreakingDir());
         }
     }
 
@@ -161,7 +191,10 @@ public final class ScriptEngine {
 
     public void exec(String code) {
         if (!initialized) initialize();
-        if (running) { notifyScriptEnd("§cA script is already running. Use /pendulum abort first."); return; }
+        if (running) {
+            notifyScriptEnd("pendulum.command.already_running");
+            return;
+        }
         running = true;
         currentSource = "<command>";
         startScript(code, "<cmd>");
@@ -169,10 +202,13 @@ public final class ScriptEngine {
 
     public void execFile(String relativePath) {
         if (!initialized) initialize();
-        if (running) { notifyScriptEnd("§cA script is already running. Use /pendulum abort first."); return; }
+        if (running) {
+            notifyScriptEnd("pendulum.command.already_running");
+            return;
+        }
         Path filePath = SCRIPT_DIR.resolve(relativePath);
         if (!Files.exists(filePath)) {
-            notifyScriptEnd("File not found: " + filePath.toAbsolutePath());
+            notifyScriptEnd("pendulum.command.file_not_found");
             return;
         }
         try {
@@ -182,7 +218,7 @@ public final class ScriptEngine {
             startScript(code, relativePath);
         } catch (Exception e) {
             LOGGER.error("Failed to read script file", e);
-            notifyScriptEnd("Error reading file: " + e.getMessage());
+            notifyScriptEnd("pendulum.command.error_reading_file");
         }
     }
 
@@ -195,17 +231,19 @@ public final class ScriptEngine {
                 cx.evaluateString(scope, code, sourceName, 1, null);
                 running = false;
                 currentSource = null;
-                notifyScriptEnd("Done.");
+                notifyScriptEnd("pendulum.command.done");
             } catch (RhinoException e) {
-                LOGGER.error("JS Error: {}", e.getMessage());
+                if (PendulumConfig.INSTANCE.logJsErrors()) {
+                    LOGGER.error("JS Error: {}", e.getMessage());
+                }
                 running = false;
                 currentSource = null;
-                notifyScriptEnd("Error: " + e.getMessage());
+                notifyScriptEnd("pendulum.command.error");
             } catch (Throwable t) {
                 LOGGER.error("Unexpected error in script", t);
                 running = false;
                 currentSource = null;
-                notifyScriptEnd("Error: " + t.getMessage());
+                notifyScriptEnd("pendulum.command.error");
             } finally {
                 Context.exit();
             }
@@ -216,28 +254,39 @@ public final class ScriptEngine {
         if (!running) return;
         running = false;
         currentSource = null;
-        if (currentFuture != null) { currentFuture.cancel(true); currentFuture = null; }
+        if (currentFuture != null) {
+            currentFuture.cancel(true);
+            currentFuture = null;
+        }
         gameTasks.clear();
         PlayerSimulator.getInstance().stopAll();
         LOGGER.info("Script aborted.");
     }
 
-    public boolean isRunning() { return running; }
-
-    public String getStatus() {
-        if (!running) return "§7Idle — no script running.";
-        return "§eRunning: §f" + (currentSource != null ? currentSource : "?");
+    public boolean isRunning() {
+        return running;
     }
 
-    public Path getScriptDir() { return SCRIPT_DIR.toAbsolutePath(); }
+    public String getStatus() {
+        if (!running) return "pendulum.status.idle";
+        return "pendulum.status.running";
+    }
+
+    public Path getScriptDir() {
+        return SCRIPT_DIR.toAbsolutePath();
+    }
 
     // ==================== 回调 ====================
 
     private ScriptEndListener endListener;
 
-    public interface ScriptEndListener { void onEnd(String message); }
+    public interface ScriptEndListener {
+        void onEnd(String message);
+    }
 
-    public void setScriptEndListener(ScriptEndListener listener) { this.endListener = listener; }
+    public void setScriptEndListener(ScriptEndListener listener) {
+        this.endListener = listener;
+    }
 
     private void notifyScriptEnd(String msg) {
         if (endListener != null) endListener.onEnd(msg);

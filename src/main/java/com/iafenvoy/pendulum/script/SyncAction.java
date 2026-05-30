@@ -8,13 +8,21 @@ import net.minecraft.core.BlockPos;
  */
 public final class SyncAction {
     public enum Type {
-        /** 破坏方块 — 等待目标位置变为空气 */
+        /**
+         * 破坏方块 — 等待目标位置变为空气
+         */
         BREAK_BLOCK,
-        /** 等待 1 tick 让服务端处理 */
+        /**
+         * 等待 1 tick 让服务端处理
+         */
         WAIT_TICK,
-        /** 与方块/物品交互后等待 1 tick */
+        /**
+         * 与方块/物品交互后等待 1 tick
+         */
         USE_ITEM,
-        /** 合成/点击槽位后等待 1 tick */
+        /**
+         * 合成/点击槽位后等待 1 tick
+         */
         CONTAINER_CLICK
     }
 
@@ -47,10 +55,17 @@ public final class SyncAction {
         return new SyncAction(Type.CONTAINER_CLICK, null, 40);
     }
 
-    public Type getType() { return type; }
-    public BlockPos getTargetPos() { return targetPos; }
+    public Type getType() {
+        return type;
+    }
 
-    /** 每 tick 调用一次，返回 true 表示动作完成或超时 */
+    public BlockPos getTargetPos() {
+        return targetPos;
+    }
+
+    /**
+     * 每 tick 调用一次，返回 true 表示动作完成或超时
+     */
     public boolean tick() {
         tickCounter++;
         return tickCounter >= maxTicks;

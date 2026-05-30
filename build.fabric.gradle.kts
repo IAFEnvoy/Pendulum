@@ -21,6 +21,7 @@ repositories {
     maven("https://maven.terraformersmc.com/") { name = "ModMenu" }
     maven("https://maven.nucleoid.xyz/") { name = "Placeholder API" }
     maven("https://cursemaven.com/") { name = "Curse Maven" }
+    maven("https://api.modrinth.com/maven/") { name = "Modrinth Maven" }
 }
 
 dependencies {
@@ -37,6 +38,8 @@ dependencies {
     // Mozilla Rhino JavaScript 引擎 (打包进模组)
     modImplementation("org.mozilla:rhino:1.7.14")
     include("org.mozilla:rhino:1.7.14")
+
+    modImplementation("maven.modrinth:jupiter:1co6rVbw")
 
     modCompileOnly("curse.maven:baritone-simply-1066613:5544753")
 }

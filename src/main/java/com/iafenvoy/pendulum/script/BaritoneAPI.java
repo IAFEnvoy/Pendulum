@@ -43,8 +43,7 @@ public final class BaritoneAPI {
     private static void requireBaritone() {
         if (!BaritoneHelper.isLoaded()) {
             throw new RuntimeException(
-                    "Baritone is not installed. Please install Baritone to use baritone.* functions. " +
-                    "https://github.com/cabaletta/baritone");
+                    net.minecraft.client.resources.language.I18n.get("pendulum.baritone.not_installed"));
         }
     }
 
@@ -55,7 +54,9 @@ public final class BaritoneAPI {
 
     // ==================== 移动/寻路 ====================
 
-    /** baritone.goto(x, y, z) — 走到指定坐标 */
+    /**
+     * baritone.goto(x, y, z) — 走到指定坐标
+     */
     public static void goto_(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int x = ((Number) args[0]).intValue();
         int y = ((Number) args[1]).intValue();
@@ -68,7 +69,9 @@ public final class BaritoneAPI {
 
     // ==================== 挖掘 ====================
 
-    /** baritone.mine(blockId, count?) — 挖掘指定方块 */
+    /**
+     * baritone.mine(blockId, count?) — 挖掘指定方块
+     */
     public static void mine(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         String blockId = Context.toString(args[0]);
         int count = args.length > 1 ? ((Number) args[1]).intValue() : Integer.MAX_VALUE;
@@ -89,7 +92,9 @@ public final class BaritoneAPI {
 
     // ==================== 跟随 ====================
 
-    /** baritone.follow(entityType?) — 跟随指定类型的实体 */
+    /**
+     * baritone.follow(entityType?) — 跟随指定类型的实体
+     */
     public static void follow(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         String entityType = args.length > 0 ? Context.toString(args[0]) : null;
         Object baritone = getBaritone();
@@ -107,7 +112,9 @@ public final class BaritoneAPI {
                                             .getKey((net.minecraft.world.entity.EntityType<?>)
                                                     e.getClass().getMethod("getType").invoke(e)).toString();
                                     return key.equals(entityType);
-                                } catch (Exception ex) { return false; }
+                                } catch (Exception ex) {
+                                    return false;
+                                }
                             });
                 } else {
                     // 跟随玩家
@@ -116,7 +123,9 @@ public final class BaritoneAPI {
                                 try {
                                     return e.getClass().getMethod("isLocalPlayer").invoke(e).equals(false)
                                             && e instanceof net.minecraft.world.entity.player.Player;
-                                } catch (Exception ex) { return false; }
+                                } catch (Exception ex) {
+                                    return false;
+                                }
                             });
                 }
             } catch (Exception e) {
@@ -127,7 +136,9 @@ public final class BaritoneAPI {
 
     // ==================== 农场 ====================
 
-    /** baritone.farm(range?) — 农场模式 */
+    /**
+     * baritone.farm(range?) — 农场模式
+     */
     public static void farm(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int range = args.length > 0 ? ((Number) args[0]).intValue() : 100;
         Object baritone = getBaritone();
@@ -151,7 +162,9 @@ public final class BaritoneAPI {
 
     // ==================== 探索 ====================
 
-    /** baritone.explore() — 开始探索 */
+    /**
+     * baritone.explore() — 开始探索
+     */
     public static void explore(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;
@@ -170,7 +183,9 @@ public final class BaritoneAPI {
 
     // ==================== 移动到方块 ====================
 
-    /** baritone.getToBlock(blockId) — 走到最近的指定方块 */
+    /**
+     * baritone.getToBlock(blockId) — 走到最近的指定方块
+     */
     public static void getToBlock(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         String blockId = Context.toString(args[0]);
         Object baritone = getBaritone();
@@ -189,7 +204,9 @@ public final class BaritoneAPI {
 
     // ==================== 建筑 ====================
 
-    /** baritone.build(schematicName, x, y, z) — 建造schematic */
+    /**
+     * baritone.build(schematicName, x, y, z) — 建造schematic
+     */
     public static void build(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         String name = Context.toString(args[0]);
         int x = args.length > 1 ? ((Number) args[1]).intValue() : 0;
@@ -212,7 +229,8 @@ public final class BaritoneAPI {
                     buildProcess.getClass().getMethod("build", String.class,
                                     Class.forName("baritone.api.schematic.ISchematic"), net.minecraft.core.Vec3i.class)
                             .invoke(buildProcess, name, null, new net.minecraft.core.Vec3i(x, y, z));
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
                 LOGGER.error("Failed to start building", e);
             }
         });
@@ -220,7 +238,9 @@ public final class BaritoneAPI {
 
     // ==================== 隧道 / 寻路辅助 ====================
 
-    /** baritone.tunnel() — 沿当前方向挖掘隧道 */
+    /**
+     * baritone.tunnel() — 沿当前方向挖掘隧道
+     */
     public static void tunnel(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;
@@ -228,7 +248,9 @@ public final class BaritoneAPI {
                 BaritoneHelper.executeCommand(baritone, "tunnel"));
     }
 
-    /** baritone.come() — 走到玩家摄像机位置 */
+    /**
+     * baritone.come() — 走到玩家摄像机位置
+     */
     public static void come(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;
@@ -236,7 +258,9 @@ public final class BaritoneAPI {
                 BaritoneHelper.executeCommand(baritone, "come"));
     }
 
-    /** baritone.axis() — 前往最近的坐标轴 (X=0 或 Z=0) */
+    /**
+     * baritone.axis() — 前往最近的坐标轴 (X=0 或 Z=0)
+     */
     public static void axis(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;
@@ -244,7 +268,9 @@ public final class BaritoneAPI {
                 BaritoneHelper.executeCommand(baritone, "axis"));
     }
 
-    /** baritone.thisWay() — 沿当前朝向持续前进 */
+    /**
+     * baritone.thisWay() — 沿当前朝向持续前进
+     */
     public static void thisWay(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;
@@ -252,7 +278,9 @@ public final class BaritoneAPI {
                 BaritoneHelper.executeCommand(baritone, "thisway"));
     }
 
-    /** baritone.surface() — 回到地表 */
+    /**
+     * baritone.surface() — 回到地表
+     */
     public static void surface(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;
@@ -262,7 +290,9 @@ public final class BaritoneAPI {
 
     // ==================== 物品 / 交互 ====================
 
-    /** baritone.pickup() — 捡起附近掉落物 */
+    /**
+     * baritone.pickup() — 捡起附近掉落物
+     */
     public static void pickup(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;
@@ -270,7 +300,9 @@ public final class BaritoneAPI {
                 BaritoneHelper.executeCommand(baritone, "pickup"));
     }
 
-    /** baritone.click() — 模拟点击（须先看向目标方块/实体） */
+    /**
+     * baritone.click() — 模拟点击（须先看向目标方块/实体）
+     */
     public static void click(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;
@@ -280,14 +312,18 @@ public final class BaritoneAPI {
 
     // ==================== 控制 ====================
 
-    /** baritone.stop() — 取消所有 baritone 行为 */
+    /**
+     * baritone.stop() — 取消所有 baritone 行为
+     */
     public static void stop(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;
         ScriptEngine.submitToGameThread(() -> BaritoneHelper.cancelAll(baritone));
     }
 
-    /** baritone.pause() — 暂停 baritone 任务 */
+    /**
+     * baritone.pause() — 暂停 baritone 任务
+     */
     public static void pause(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;
@@ -295,7 +331,9 @@ public final class BaritoneAPI {
                 BaritoneHelper.executeCommand(baritone, "pause"));
     }
 
-    /** baritone.resume() — 恢复暂停的任务 */
+    /**
+     * baritone.resume() — 恢复暂停的任务
+     */
     public static void resume(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;
@@ -303,14 +341,18 @@ public final class BaritoneAPI {
                 BaritoneHelper.executeCommand(baritone, "resume"));
     }
 
-    /** baritone.isActive() → boolean — 是否正在工作 */
+    /**
+     * baritone.isActive() → boolean — 是否正在工作
+     */
     public static boolean isActive(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return false;
         return ScriptEngine.submitToGameThread(() -> BaritoneHelper.isPathing(baritone));
     }
 
-    /** baritone.isPaused() → boolean — 是否处于暂停状态 */
+    /**
+     * baritone.isPaused() → boolean — 是否处于暂停状态
+     */
     public static boolean isPaused(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         requireBaritone();
         return ScriptEngine.submitToGameThread(() -> {
@@ -319,11 +361,15 @@ public final class BaritoneAPI {
                 if (baritone == null) return false;
                 Object pathingBehavior = baritone.getClass().getMethod("getPathingBehavior").invoke(baritone);
                 return (boolean) pathingBehavior.getClass().getMethod("isPaused").invoke(pathingBehavior);
-            } catch (Exception e) { return false; }
+            } catch (Exception e) {
+                return false;
+            }
         });
     }
 
-    /** baritone.command(cmd) — 执行一条 baritone 命令（如 "mine diamond_ore 64"） */
+    /**
+     * baritone.command(cmd) — 执行一条 baritone 命令（如 "mine diamond_ore 64"）
+     */
     public static void command(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         String cmd = Context.toString(args[0]);
         Object baritone = getBaritone();
@@ -331,7 +377,9 @@ public final class BaritoneAPI {
         ScriptEngine.submitToGameThread(() -> BaritoneHelper.executeCommand(baritone, cmd));
     }
 
-    /** baritone.setting(key, value) — 修改 baritone 设置 */
+    /**
+     * baritone.setting(key, value) — 修改 baritone 设置
+     */
     public static void setting(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         String key = Context.toString(args[0]);
         Object value = args[1];
@@ -350,7 +398,9 @@ public final class BaritoneAPI {
 
     // ==================== 选区 ====================
 
-    /** baritone.select(x1, y1, z1, x2, y2, z2) — 设置选区 */
+    /**
+     * baritone.select(x1, y1, z1, x2, y2, z2) — 设置选区
+     */
     public static void select(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int x1 = ((Number) args[0]).intValue(), y1 = ((Number) args[1]).intValue(), z1 = ((Number) args[2]).intValue();
         int x2 = ((Number) args[3]).intValue(), y2 = ((Number) args[4]).intValue(), z2 = ((Number) args[5]).intValue();
@@ -361,11 +411,15 @@ public final class BaritoneAPI {
                 Object selectionManager = baritone.getClass().getMethod("getSelectionManager").invoke(baritone);
                 selectionManager.getClass().getMethod("addSelection", BlockPos.class, BlockPos.class)
                         .invoke(selectionManager, new BlockPos(x1, y1, z1), new BlockPos(x2, y2, z2));
-            } catch (Exception e) { LOGGER.error("Failed to set selection", e); }
+            } catch (Exception e) {
+                LOGGER.error("Failed to set selection", e);
+            }
         });
     }
 
-    /** baritone.clearSelection() — 清除选区 */
+    /**
+     * baritone.clearSelection() — 清除选区
+     */
     public static void clearSelection(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;
@@ -373,11 +427,15 @@ public final class BaritoneAPI {
             try {
                 Object selectionManager = baritone.getClass().getMethod("getSelectionManager").invoke(baritone);
                 selectionManager.getClass().getMethod("removeAllSelections").invoke(selectionManager);
-            } catch (Exception e) { LOGGER.error("Failed to clear selection", e); }
+            } catch (Exception e) {
+                LOGGER.error("Failed to clear selection", e);
+            }
         });
     }
 
-    /** baritone.selPos1(x?, y?, z?) — 设置选区 pos1（不传参 = 当前玩家位置） */
+    /**
+     * baritone.selPos1(x?, y?, z?) — 设置选区 pos1（不传参 = 当前玩家位置）
+     */
     public static void selPos1(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;
@@ -391,7 +449,9 @@ public final class BaritoneAPI {
         });
     }
 
-    /** baritone.selPos2(x?, y?, z?) — 设置选区 pos2 */
+    /**
+     * baritone.selPos2(x?, y?, z?) — 设置选区 pos2
+     */
     public static void selPos2(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;
@@ -407,7 +467,9 @@ public final class BaritoneAPI {
 
     // ==================== 信息 & 工具 ====================
 
-    /** baritone.find(blockId) — 搜索世界中指定方块的位置（显示在聊天栏） */
+    /**
+     * baritone.find(blockId) — 搜索世界中指定方块的位置（显示在聊天栏）
+     */
     public static void find(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         String blockId = Context.toString(args[0]);
         Object baritone = getBaritone();
@@ -416,7 +478,9 @@ public final class BaritoneAPI {
                 BaritoneHelper.executeCommand(baritone, "find " + blockId));
     }
 
-    /** baritone.blacklist() — 将准星对准的方块加入寻路黑名单 */
+    /**
+     * baritone.blacklist() — 将准星对准的方块加入寻路黑名单
+     */
     public static void blacklist(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;
@@ -426,7 +490,9 @@ public final class BaritoneAPI {
 
     // ==================== 路径点 / 回家 ====================
 
-    /** baritone.waypointSave(name) — 保存当前位置为路径点 */
+    /**
+     * baritone.waypointSave(name) — 保存当前位置为路径点
+     */
     public static void waypointSave(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         String name = Context.toString(args[0]);
         Object baritone = getBaritone();
@@ -435,7 +501,9 @@ public final class BaritoneAPI {
                 BaritoneHelper.executeCommand(baritone, "wp save " + name));
     }
 
-    /** baritone.waypointList() — 列出所有路径点 */
+    /**
+     * baritone.waypointList() — 列出所有路径点
+     */
     public static void waypointList(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;
@@ -443,7 +511,9 @@ public final class BaritoneAPI {
                 BaritoneHelper.executeCommand(baritone, "wp list"));
     }
 
-    /** baritone.waypointDelete(name) — 删除指定路径点 */
+    /**
+     * baritone.waypointDelete(name) — 删除指定路径点
+     */
     public static void waypointDelete(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         String name = Context.toString(args[0]);
         Object baritone = getBaritone();
@@ -452,7 +522,9 @@ public final class BaritoneAPI {
                 BaritoneHelper.executeCommand(baritone, "wp delete " + name));
     }
 
-    /** baritone.sethome(name) — 设置当前玩家位置为家 */
+    /**
+     * baritone.sethome(name) — 设置当前玩家位置为家
+     */
     public static void sethome(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;
@@ -460,7 +532,9 @@ public final class BaritoneAPI {
                 BaritoneHelper.executeCommand(baritone, "sethome"));
     }
 
-    /** baritone.home(name?) — 回家 */
+    /**
+     * baritone.home(name?) — 回家
+     */
     public static void home(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;
@@ -470,7 +544,9 @@ public final class BaritoneAPI {
 
     // ==================== 进程 / 状态 ====================
 
-    /** baritone.proc() — 显示当前进程状态 */
+    /**
+     * baritone.proc() — 显示当前进程状态
+     */
     public static void proc(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;
@@ -478,7 +554,9 @@ public final class BaritoneAPI {
                 BaritoneHelper.executeCommand(baritone, "proc"));
     }
 
-    /** baritone.eta() — 显示预计到达时间 */
+    /**
+     * baritone.eta() — 显示预计到达时间
+     */
     public static void eta(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         Object baritone = getBaritone();
         if (baritone == null) return;

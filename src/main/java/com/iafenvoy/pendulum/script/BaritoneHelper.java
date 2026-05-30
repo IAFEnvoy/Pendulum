@@ -30,13 +30,16 @@ public final class BaritoneHelper {
         LOADED = loaded;
     }
 
-    private BaritoneHelper() {}
+    private BaritoneHelper() {
+    }
 
     public static boolean isLoaded() {
         return LOADED;
     }
 
-    /** 获取主 Baritone 实例（在游戏线程调用） */
+    /**
+     * 获取主 Baritone 实例（在游戏线程调用）
+     */
     public static Object getPrimaryBaritone() {
         if (!LOADED) return null;
         try {
@@ -51,7 +54,9 @@ public final class BaritoneHelper {
         }
     }
 
-    /** 获取 Baritone Settings */
+    /**
+     * 获取 Baritone Settings
+     */
     public static Object getSettings() {
         if (!LOADED) return null;
         try {
@@ -65,7 +70,9 @@ public final class BaritoneHelper {
         }
     }
 
-    /** 获取进程（如 mineProcess / followProcess / buildProcess 等） */
+    /**
+     * 获取进程（如 mineProcess / followProcess / buildProcess 等）
+     */
     public static Object getProcess(Object baritone, String processMethod) {
         try {
             return baritone.getClass().getMethod(processMethod).invoke(baritone);
@@ -74,7 +81,9 @@ public final class BaritoneHelper {
         }
     }
 
-    /** 执行 baritone 命令 */
+    /**
+     * 执行 baritone 命令
+     */
     public static boolean executeCommand(Object baritone, String command) {
         try {
             Object commandManager = baritone.getClass().getMethod("getCommandManager").invoke(baritone);
@@ -85,15 +94,20 @@ public final class BaritoneHelper {
         }
     }
 
-    /** 取消所有 baritone 行为 */
+    /**
+     * 取消所有 baritone 行为
+     */
     public static void cancelAll(Object baritone) {
         try {
             Object pathingBehavior = baritone.getClass().getMethod("getPathingBehavior").invoke(baritone);
             pathingBehavior.getClass().getMethod("cancelEverything").invoke(pathingBehavior);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
-    /** 检查 baritone 是否处于 pathing 状态 */
+    /**
+     * 检查 baritone 是否处于 pathing 状态
+     */
     public static boolean isPathing(Object baritone) {
         try {
             Object pathingBehavior = baritone.getClass().getMethod("getPathingBehavior").invoke(baritone);
@@ -103,7 +117,9 @@ public final class BaritoneHelper {
         }
     }
 
-    /** 设置 Baritone Settings 中的某个属性值 */
+    /**
+     * 设置 Baritone Settings 中的某个属性值
+     */
     @SuppressWarnings("unchecked")
     public static boolean setSetting(Object settings, String key, Object value) {
         try {
@@ -121,7 +137,9 @@ public final class BaritoneHelper {
         }
     }
 
-    /** 获取设置值 */
+    /**
+     * 获取设置值
+     */
     public static Object getSetting(Object settings, String key) {
         try {
             java.lang.reflect.Field field = settings.getClass().getField(key);

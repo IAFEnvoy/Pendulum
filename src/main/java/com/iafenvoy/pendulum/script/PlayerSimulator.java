@@ -24,7 +24,8 @@ public final class PlayerSimulator {
     // 保存原始的 KeyboardInput，以便模拟结束后恢复
     private Object originalInput;
 
-    private PlayerSimulator() {}
+    private PlayerSimulator() {
+    }
 
     public static PlayerSimulator getInstance() {
         return INSTANCE;
@@ -32,25 +33,59 @@ public final class PlayerSimulator {
 
     // ---- setters (被 JS 调用) ----
 
-    public void setForward(boolean v) { this.forward = v; }
-    public void setBackward(boolean v) { this.backward = v; }
-    public void setLeft(boolean v) { this.left = v; }
-    public void setRight(boolean v) { this.right = v; }
-    public void setJump(boolean v) { this.jump = v; this.jumpHold = v; }
-    public void setSneak(boolean v) { this.sneak = v; }
-    public void setSprinting(boolean v) { this.sprint = v; }
-    public void stopSprinting() { this.sprintOff = true; }
-    public void setLookYaw(float yaw) { this.targetYaw = yaw; }
-    public void setLookPitch(float pitch) { this.targetPitch = pitch; }
+    public void setForward(boolean v) {
+        this.forward = v;
+    }
 
-    /** 启用持续破坏方块模式 */
+    public void setBackward(boolean v) {
+        this.backward = v;
+    }
+
+    public void setLeft(boolean v) {
+        this.left = v;
+    }
+
+    public void setRight(boolean v) {
+        this.right = v;
+    }
+
+    public void setJump(boolean v) {
+        this.jump = v;
+        this.jumpHold = v;
+    }
+
+    public void setSneak(boolean v) {
+        this.sneak = v;
+    }
+
+    public void setSprinting(boolean v) {
+        this.sprint = v;
+    }
+
+    public void stopSprinting() {
+        this.sprintOff = true;
+    }
+
+    public void setLookYaw(float yaw) {
+        this.targetYaw = yaw;
+    }
+
+    public void setLookPitch(float pitch) {
+        this.targetPitch = pitch;
+    }
+
+    /**
+     * 启用持续破坏方块模式
+     */
     public void setBreaking(BlockPos pos, Direction dir) {
         this.breakingPos = pos;
         this.breakingDir = dir;
         this.breaking = true;
     }
 
-    /** 停止破坏（不清除移动状态） */
+    /**
+     * 停止破坏（不清除移动状态）
+     */
     public void stopBreaking() {
         this.breaking = false;
         this.breakingPos = null;
@@ -70,57 +105,100 @@ public final class PlayerSimulator {
 
     // ---- getters ----
 
-    public boolean isForward() { return forward; }
-    public boolean isBackward() { return backward; }
-    public boolean isLeft() { return left; }
-    public boolean isRight() { return right; }
+    public boolean isForward() {
+        return forward;
+    }
 
-    /** 是否有任何模拟活动（移动/破坏），用于 Mixin 判断是否替换 input */
+    public boolean isBackward() {
+        return backward;
+    }
+
+    public boolean isLeft() {
+        return left;
+    }
+
+    public boolean isRight() {
+        return right;
+    }
+
+    /**
+     * 是否有任何模拟活动（移动/破坏），用于 Mixin 判断是否替换 input
+     */
     public boolean isActive() {
         return forward || backward || left || right || jumpHold || sneak || sprint || breaking;
     }
 
-    public boolean isSneakHold() { return sneak; }
-    public boolean isSprinting() { return sprint; }
+    public boolean isSneakHold() {
+        return sneak;
+    }
+
+    public boolean isSprinting() {
+        return sprint;
+    }
 
     public boolean consumeJump() {
         boolean v = jump;
         jump = false;
         return v;
     }
-    public boolean isJumpHold() { return jumpHold; }
+
+    public boolean isJumpHold() {
+        return jumpHold;
+    }
+
     public boolean consumeSneak() {
         boolean v = sneak;
         sneak = false;
         return v;
     }
+
     public boolean consumeSprint() {
         boolean v = sprint;
         sprint = false;
         return v;
     }
+
     public boolean consumeSprintOff() {
         boolean v = sprintOff;
         sprintOff = false;
         return v;
     }
+
     public Float consumeTargetYaw() {
         Float v = targetYaw;
         targetYaw = null;
         return v;
     }
+
     public Float consumeTargetPitch() {
         Float v = targetPitch;
         targetPitch = null;
         return v;
     }
 
-    /** 是否正在持续破坏方块模式 */
-    public boolean isBreaking() { return breaking; }
-    public BlockPos getBreakingPos() { return breakingPos; }
-    public Direction getBreakingDir() { return breakingDir; }
+    /**
+     * 是否正在持续破坏方块模式
+     */
+    public boolean isBreaking() {
+        return breaking;
+    }
 
-    /** Mixin 用：保存/恢复玩家原始的 KeyboardInput */
-    public void setOriginalInput(Object input) { this.originalInput = input; }
-    public Object getOriginalInput() { return originalInput; }
+    public BlockPos getBreakingPos() {
+        return breakingPos;
+    }
+
+    public Direction getBreakingDir() {
+        return breakingDir;
+    }
+
+    /**
+     * Mixin 用：保存/恢复玩家原始的 KeyboardInput
+     */
+    public void setOriginalInput(Object input) {
+        this.originalInput = input;
+    }
+
+    public Object getOriginalInput() {
+        return originalInput;
+    }
 }
