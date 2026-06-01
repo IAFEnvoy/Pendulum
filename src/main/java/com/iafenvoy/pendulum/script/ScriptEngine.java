@@ -48,20 +48,20 @@ public final class ScriptEngine {
     }
 
     public void initialize() {
-        if (initialized) return;
+        if (this.initialized) return;
         try {
             Context cx = Context.enter();
-            scope = cx.initStandardObjects();
-            ScriptableObject mcObj = (ScriptableObject) cx.newObject(scope);
+            this.scope = cx.initStandardObjects();
+            ScriptableObject mcObj = (ScriptableObject) cx.newObject(this.scope);
             mcObj.defineFunctionProperties(
                     MinecraftAPI.FUNCTION_NAMES.toArray(new String[0]),
                     MinecraftAPI.class, ScriptableObject.DONTENUM);
-            ScriptableObject.putProperty(scope, "minecraft", mcObj);
-            ScriptableObject.putProperty(scope, "game", mcObj);
-            ScriptableObject.putProperty(scope, "mc", mcObj);
+            ScriptableObject.putProperty(this.scope, "minecraft", mcObj);
+            ScriptableObject.putProperty(this.scope, "game", mcObj);
+            ScriptableObject.putProperty(this.scope, "mc", mcObj);
 
             // baritone 对象（可选前置，始终注册，调用时检查）
-            ScriptableObject brObj = (ScriptableObject) cx.newObject(scope);
+            ScriptableObject brObj = (ScriptableObject) cx.newObject(this.scope);
             brObj.defineFunctionProperties(
                     BaritoneAPI.FUNCTION_NAMES.toArray(new String[0]),
                     BaritoneAPI.class, ScriptableObject.DONTENUM);
@@ -70,13 +70,13 @@ public final class ScriptEngine {
                     new FunctionObject("goto",
                             BaritoneAPI.class.getMethod("goto_", Context.class, Scriptable.class, Object[].class, Function.class),
                             brObj));
-            ScriptableObject.putProperty(scope, "baritone", brObj);
-            ScriptableObject.putProperty(scope, "br", brObj);
+            ScriptableObject.putProperty(this.scope, "baritone", brObj);
+            ScriptableObject.putProperty(this.scope, "br", brObj);
 
-            ScriptableObject consoleObj = (ScriptableObject) cx.newObject(scope);
+            ScriptableObject consoleObj = (ScriptableObject) cx.newObject(this.scope);
             consoleObj.defineFunctionProperties(new String[]{"log"}, MinecraftAPI.class, ScriptableObject.DONTENUM);
-            ScriptableObject.putProperty(scope, "console", consoleObj);
-            initialized = true;
+            ScriptableObject.putProperty(this.scope, "console", consoleObj);
+            this.initialized = true;
             LOGGER.info("Pendulum ScriptEngine initialized.");
         } catch (Exception e) {
             LOGGER.error("Failed to initialize", e);
@@ -124,8 +124,8 @@ public final class ScriptEngine {
      * 在 JS 线程调用：等待方块破坏完成
      */
     static boolean waitForBreak() {
-        int timeoutTicks = PendulumConfig.INSTANCE.breakTimeout();
-        long deadline = System.currentTimeMillis() + ((long) timeoutTicks * PendulumConfig.INSTANCE.tickIntervalMs());
+        int timeoutTicks = PendulumConfig.INSTANCE.breakTimeout.getValue();
+        long deadline = System.currentTimeMillis() + ((long) timeoutTicks * PendulumConfig.INSTANCE.tickIntervalMs.getValue());
         while (System.currentTimeMillis() < deadline) {
             boolean[] done = {false};
             submitToGameThread(() -> {
@@ -147,7 +147,7 @@ public final class ScriptEngine {
      */
     private static void singleTickSleep() {
         try {
-            Thread.sleep(PendulumConfig.INSTANCE.tickIntervalMs());
+            Thread.sleep((int) PendulumConfig.INSTANCE.tickIntervalMs.getValue());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -164,11 +164,12 @@ public final class ScriptEngine {
 
     public void onClientTick() {
         for (int i = 0; i < 50; i++) {
-            Runnable task = gameTasks.poll();
+            Runnable task = this.gameTasks.poll();
             if (task == null) break;
             task.run();
         }
-        applyBlockBreaking();
+        this.applyBlockBreaking();
+        this.applyItemUse();
     }
 
     private void applyBlockBreaking() {
@@ -187,63 +188,81 @@ public final class ScriptEngine {
         }
     }
 
+    /**
+     * 每 tick 检查：如果 PlayerSimulator 标记为持续使用物品，调用 gameMode.useItem()；
+     * 如果刚停止使用，调用 gameMode.releaseUsingItem()。
+     * 支持吃东西、拉弓、举盾等需要长按右键的操作。
+     */
+    private void applyItemUse() {
+        PlayerSimulator sim = PlayerSimulator.getInstance();
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.gameMode == null) return;
+
+        if (sim.consumeUseItemStart()) {
+            mc.gameMode.useItem(mc.player, net.minecraft.world.InteractionHand.MAIN_HAND);
+        }
+        if (sim.consumeUseItemStop()) {
+            mc.gameMode.releaseUsingItem(mc.player);
+        }
+    }
+
     // ==================== 执行入口 ====================
 
     public void exec(String code) {
-        if (!initialized) initialize();
-        if (running) {
-            notifyScriptEnd("pendulum.command.already_running");
+        if (!this.initialized) this.initialize();
+        if (this.running) {
+            this.notifyScriptEnd("pendulum.command.already_running");
             return;
         }
-        running = true;
-        currentSource = "<command>";
-        startScript(code, "<cmd>");
+        this.running = true;
+        this.currentSource = "<command>";
+        this.startScript(code, "<cmd>");
     }
 
     public void execFile(String relativePath) {
-        if (!initialized) initialize();
-        if (running) {
-            notifyScriptEnd("pendulum.command.already_running");
+        if (!this.initialized) this.initialize();
+        if (this.running) {
+            this.notifyScriptEnd("pendulum.command.already_running");
             return;
         }
         Path filePath = SCRIPT_DIR.resolve(relativePath);
         if (!Files.exists(filePath)) {
-            notifyScriptEnd("pendulum.command.file_not_found");
+            this.notifyScriptEnd("pendulum.command.file_not_found");
             return;
         }
         try {
             String code = Files.readString(filePath);
-            running = true;
-            currentSource = "file: " + relativePath;
-            startScript(code, relativePath);
+            this.running = true;
+            this.currentSource = "file: " + relativePath;
+            this.startScript(code, relativePath);
         } catch (Exception e) {
             LOGGER.error("Failed to read script file", e);
-            notifyScriptEnd("pendulum.command.error_reading_file");
+            this.notifyScriptEnd("pendulum.command.error_reading_file");
         }
     }
 
     private void startScript(String code, String sourceName) {
-        currentFuture = scriptThread.submit(() -> {
+        this.currentFuture = this.scriptThread.submit(() -> {
             Context cx = Context.enter();
             try {
                 cx.setLanguageVersion(Context.VERSION_ES6);
                 cx.setOptimizationLevel(-1);
-                cx.evaluateString(scope, code, sourceName, 1, null);
-                running = false;
-                currentSource = null;
-                notifyScriptEnd("pendulum.command.done");
+                cx.evaluateString(this.scope, code, sourceName, 1, null);
+                this.running = false;
+                this.currentSource = null;
+                this.notifyScriptEnd("pendulum.command.done");
             } catch (RhinoException e) {
-                if (PendulumConfig.INSTANCE.logJsErrors()) {
+                if (PendulumConfig.INSTANCE.logJsErrors.getValue()) {
                     LOGGER.error("JS Error: {}", e.getMessage());
                 }
-                running = false;
-                currentSource = null;
-                notifyScriptEnd("pendulum.command.error");
+                this.running = false;
+                this.currentSource = null;
+                this.notifyScriptEnd("pendulum.command.error");
             } catch (Throwable t) {
                 LOGGER.error("Unexpected error in script", t);
-                running = false;
-                currentSource = null;
-                notifyScriptEnd("pendulum.command.error");
+                this.running = false;
+                this.currentSource = null;
+                this.notifyScriptEnd("pendulum.command.error");
             } finally {
                 Context.exit();
             }
@@ -251,24 +270,63 @@ public final class ScriptEngine {
     }
 
     public void abort() {
-        if (!running) return;
-        running = false;
-        currentSource = null;
-        if (currentFuture != null) {
-            currentFuture.cancel(true);
-            currentFuture = null;
+        if (!this.running) return;
+        this.running = false;
+        this.currentSource = null;
+        if (this.currentFuture != null) {
+            this.currentFuture.cancel(true);
+            this.currentFuture = null;
         }
-        gameTasks.clear();
+        this.gameTasks.clear();
         PlayerSimulator.getInstance().stopAll();
         LOGGER.info("Script aborted.");
     }
 
     public boolean isRunning() {
-        return running;
+        return this.running;
+    }
+
+    /**
+     * MCP 专用：执行代码并返回 JS 表达式的值（而非 "Done."）。
+     */
+    public void execWithCallback(String code, CompletableFuture<String> resultFuture) {
+        if (!this.initialized) this.initialize();
+        if (this.running) {
+            resultFuture.complete("[Pendulum] Already running a script. Use /pendulum abort first.");
+            return;
+        }
+        this.running = true;
+        this.currentSource = "<mcp>";
+        this.currentFuture = this.scriptThread.submit(() -> {
+            Context cx = Context.enter();
+            try {
+                cx.setLanguageVersion(Context.VERSION_ES6);
+                cx.setOptimizationLevel(-1);
+                Object result = cx.evaluateString(this.scope, code, "<mcp>", 1, null);
+                String output = Context.toString(result);
+                this.running = false;
+                this.currentSource = null;
+                resultFuture.complete(output);
+            } catch (RhinoException e) {
+                if (PendulumConfig.INSTANCE.logJsErrors.getValue()) {
+                    LOGGER.error("JS Error: {}", e.getMessage());
+                }
+                this.running = false;
+                this.currentSource = null;
+                resultFuture.complete("Error: " + e.getMessage());
+            } catch (Throwable t) {
+                LOGGER.error("Unexpected error in script", t);
+                this.running = false;
+                this.currentSource = null;
+                resultFuture.complete("Error: " + t.getMessage());
+            } finally {
+                Context.exit();
+            }
+        });
     }
 
     public String getStatus() {
-        if (!running) return "pendulum.status.idle";
+        if (!this.running) return "pendulum.status.idle";
         return "pendulum.status.running";
     }
 
@@ -289,7 +347,7 @@ public final class ScriptEngine {
     }
 
     private void notifyScriptEnd(String msg) {
-        if (endListener != null) endListener.onEnd(msg);
+        if (this.endListener != null) this.endListener.onEnd(msg);
     }
 }
 

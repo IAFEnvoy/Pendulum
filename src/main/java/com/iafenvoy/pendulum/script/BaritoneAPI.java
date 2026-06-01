@@ -24,18 +24,23 @@ public final class BaritoneAPI {
             // 寻路 & 移动
             "mine", "follow", "farm", "explore",
             "getToBlock", "build", "tunnel", "come", "axis",
-            "thisWay", "surface",
+            "thisWay", "surface", "goal", "path",
             // 物品 & 交互
             "pickup", "click",
             // 控制
-            "stop", "pause", "resume", "isActive", "isPaused",
+            "stop", "cancel", "forceCancel", "pause", "resume", "isActive", "isPaused", "paused",
             // 选区
             "select", "clearSelection", "selPos1", "selPos2",
             // 设置 & 信息
             "command", "setting", "find", "blacklist",
             "waypointSave", "waypointList", "waypointDelete",
             "sethome", "home",
-            "proc", "eta",
+            "proc", "eta", "version",
+            // 工具
+            "repack", "gc", "invert", "render",
+            "reloadAll", "saveAll",
+            // 鞘翅 & Litematica
+            "elytra", "litematica",
             // 帮助
             "help"
     );
@@ -288,6 +293,35 @@ public final class BaritoneAPI {
                 BaritoneHelper.executeCommand(baritone, "surface"));
     }
 
+    /**
+     * baritone.goal(x, y, z) 或 goal(x, z) 或 goal(y) 或 goal() 设置当前目标
+     */
+    public static void goal(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
+        Object baritone = getBaritone();
+        if (baritone == null) return;
+        ScriptEngine.submitToGameThread(() -> {
+            if (args.length == 0) {
+                BaritoneHelper.executeCommand(baritone, "goal");
+            } else if (args.length == 1) {
+                BaritoneHelper.executeCommand(baritone, "goal " + ((Number) args[0]).intValue());
+            } else if (args.length == 2) {
+                BaritoneHelper.executeCommand(baritone, "goal " + ((Number) args[0]).intValue() + " " + ((Number) args[1]).intValue());
+            } else {
+                BaritoneHelper.executeCommand(baritone, "goal " + ((Number) args[0]).intValue() + " " + ((Number) args[1]).intValue() + " " + ((Number) args[2]).intValue());
+            }
+        });
+    }
+
+    /**
+     * baritone.path() — 开始向当前 goal 寻路
+     */
+    public static void path(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
+        Object baritone = getBaritone();
+        if (baritone == null) return;
+        ScriptEngine.submitToGameThread(() ->
+                BaritoneHelper.executeCommand(baritone, "path"));
+    }
+
     // ==================== 物品 / 交互 ====================
 
     /**
@@ -365,6 +399,30 @@ public final class BaritoneAPI {
                 return false;
             }
         });
+    }
+
+    /**
+     * baritone.paused() → boolean — 同 isPaused()，检查是否已暂停
+     */
+    public static boolean paused(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
+        return isPaused(cx, thisObj, args, funObj);
+    }
+
+    /**
+     * baritone.cancel() — 取消所有 Baritone 行为（同 stop()）
+     */
+    public static void cancel(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
+        stop(cx, thisObj, args, funObj);
+    }
+
+    /**
+     * baritone.forceCancel() — 强制取消所有行为
+     */
+    public static void forceCancel(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
+        Object baritone = getBaritone();
+        if (baritone == null) return;
+        ScriptEngine.submitToGameThread(() ->
+                BaritoneHelper.executeCommand(baritone, "forcecancel"));
     }
 
     /**
@@ -564,26 +622,117 @@ public final class BaritoneAPI {
                 BaritoneHelper.executeCommand(baritone, "eta"));
     }
 
+    /**
+     * baritone.version() — 显示 Baritone 版本
+     */
+    public static void version(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
+        Object baritone = getBaritone();
+        if (baritone == null) return;
+        ScriptEngine.submitToGameThread(() ->
+                BaritoneHelper.executeCommand(baritone, "version"));
+    }
+
+    // ==================== 工具方法 ====================
+
+    /**
+     * baritone.repack() — 重新缓存周围区块
+     */
+    public static void repack(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
+        Object baritone = getBaritone();
+        if (baritone == null) return;
+        ScriptEngine.submitToGameThread(() ->
+                BaritoneHelper.executeCommand(baritone, "repack"));
+    }
+
+    /**
+     * baritone.gc() — 调用 System.gc() 释放内存
+     */
+    public static void gc(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
+        Object baritone = getBaritone();
+        if (baritone == null) return;
+        ScriptEngine.submitToGameThread(() ->
+                BaritoneHelper.executeCommand(baritone, "gc"));
+    }
+
+    /**
+     * baritone.invert() — 反转当前 goal，变为远离目标
+     */
+    public static void invert(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
+        Object baritone = getBaritone();
+        if (baritone == null) return;
+        ScriptEngine.submitToGameThread(() ->
+                BaritoneHelper.executeCommand(baritone, "invert"));
+    }
+
+    /**
+     * baritone.render() — 修复区块渲染问题（无需重载）
+     */
+    public static void render(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
+        Object baritone = getBaritone();
+        if (baritone == null) return;
+        ScriptEngine.submitToGameThread(() ->
+                BaritoneHelper.executeCommand(baritone, "render"));
+    }
+
+    /**
+     * baritone.reloadAll() — 重载 Baritone 世界缓存
+     */
+    public static void reloadAll(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
+        Object baritone = getBaritone();
+        if (baritone == null) return;
+        ScriptEngine.submitToGameThread(() ->
+                BaritoneHelper.executeCommand(baritone, "reloadall"));
+    }
+
+    /**
+     * baritone.saveAll() — 保存 Baritone 世界缓存
+     */
+    public static void saveAll(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
+        Object baritone = getBaritone();
+        if (baritone == null) return;
+        ScriptEngine.submitToGameThread(() ->
+                BaritoneHelper.executeCommand(baritone, "saveall"));
+    }
+
+    /**
+     * baritone.elytra() — 鞘翅飞行模式
+     */
+    public static void elytra(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
+        Object baritone = getBaritone();
+        if (baritone == null) return;
+        ScriptEngine.submitToGameThread(() ->
+                BaritoneHelper.executeCommand(baritone, "elytra"));
+    }
+
+    /**
+     * baritone.litematica() — 建造当前 Litematica 打开的 schematic
+     */
+    public static void litematica(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
+        Object baritone = getBaritone();
+        if (baritone == null) return;
+        ScriptEngine.submitToGameThread(() ->
+                BaritoneHelper.executeCommand(baritone, "litematica"));
+    }
+
     // ==================== 帮助 ====================
 
     public static void help(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-        String msg = "§6=== Baritone API ===\n" +
-                "§e寻路:§r goto(x,y,z), come(), axis(), thisWay(), surface()\n" +
+        String msg = "§6=== Baritone (br) 完整 API ===\n" +
+                "§e移动/寻路:§r goto(x,y,z), goal(x,y,z?), path(), come(), axis(), thisWay(), surface(), elytra()\n" +
                 "§e挖掘:§r mine('blockId', count?), tunnel()\n" +
                 "§e跟随:§r follow('entityType'?), pickup()\n" +
-                "§e农场:§r farm(range?)  探索:§r explore()\n" +
-                "§e移动:§r getToBlock('blockId')\n" +
-                "§e建筑:§r build('schematic', x?, y?, z?)\n" +
+                "§e农场:§r farm(range?)  探索:§r explore()  反转:§r invert()\n" +
+                "§e移动到方块:§r getToBlock('blockId')\n" +
+                "§e建筑:§r build('schematic', x?,y?,z?), litematica()\n" +
                 "§e交互:§r click()\n" +
-                "§e控制:§r stop(), pause(), resume(), isActive(), isPaused()\n" +
+                "§e控制:§r stop(), cancel(), forceCancel(), pause(), resume(), isActive(), isPaused(), paused()\n" +
                 "§e命令:§r command('baritone命令')\n" +
                 "§e设置:§r setting('key', value)\n" +
-                "§e选区:§r select(x1,y1,z1,x2,y2,z2), selPos1(), selPos2(), clearSelection()\n" +
-                "§e工具:§r find('blockId'), blacklist()\n" +
-                "§e路径点:§r waypointSave(name), waypointList(), waypointDelete(name)\n" +
-                "§e家:§r sethome(), home()\n" +
-                "§e状态:§r proc(), eta()\n" +
-                "§e帮助:§r help()";
+                "§e选区:§r selPos1(x?,y?,z?), selPos2(x?,y?,z?), select(x1,y1,z1,x2,y2,z2), clearSelection()\n" +
+                "§e信息:§r find('blockId'), proc(), eta(), version()  黑名单:§r blacklist()\n" +
+                "§e路径点:§r waypointSave('name'), waypointList(), waypointDelete('name')  家:§r sethome(), home()\n" +
+                "§e工具:§r repack(), gc(), render(), reloadAll(), saveAll()\n" +
+                "§c提示: 能用 Baritone (br.*) 就尽量用 Baritone！路径规划、挖矿、建筑比逐格操作高效得多。";
         if (Minecraft.getInstance().player != null) {
             Minecraft.getInstance().player.displayClientMessage(
                     net.minecraft.network.chat.Component.literal(msg), false);

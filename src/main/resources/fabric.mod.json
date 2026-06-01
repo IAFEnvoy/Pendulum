@@ -17,6 +17,9 @@
   "entrypoints": {
     "client": [
       "com.iafenvoy.pendulum.PendulumClient"
+    ],
+    "modmenu": [
+      "com.iafenvoy.pendulum.compat.ModMenu"
     ]
   },
   "mixins": [

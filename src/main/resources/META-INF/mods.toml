@@ -11,14 +11,14 @@ logoFile = "${mod_logo}"
 authors = "${mod_authors}"
 description = '''${mod_description}'''
 
-[[dependencies.${mod_id}]]
+[[dependencies.${ mod_id }]]
 modId = "forge"
 mandatory = true
 versionRange = "[1,)"
 ordering = "NONE"
 side = "BOTH"
 
-[[dependencies.${mod_id}]]
+[[dependencies.${ mod_id }]]
 modId = "minecraft"
 mandatory = true
 versionRange = "${minecraft_version_range_forge}"

@@ -56,22 +56,22 @@ public final class SyncAction {
     }
 
     public Type getType() {
-        return type;
+        return this.type;
     }
 
     public BlockPos getTargetPos() {
-        return targetPos;
+        return this.targetPos;
     }
 
     /**
      * 每 tick 调用一次，返回 true 表示动作完成或超时
      */
     public boolean tick() {
-        tickCounter++;
-        return tickCounter >= maxTicks;
+        this.tickCounter++;
+        return this.tickCounter >= this.maxTicks;
     }
 
     public boolean isDone() {
-        return tickCounter >= maxTicks;
+        return this.tickCounter >= this.maxTicks;
     }
 }

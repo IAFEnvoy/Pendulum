@@ -21,6 +21,10 @@ public final class PlayerSimulator {
     private BlockPos breakingPos;
     private Direction breakingDir;
     private boolean breaking;
+    // 持续使用物品（吃东西/拉弓/举盾）
+    private boolean useItem;
+    private boolean useItemJustStarted;
+    private boolean useItemJustStopped;
     // 保存原始的 KeyboardInput，以便模拟结束后恢复
     private Object originalInput;
 
@@ -92,87 +96,105 @@ public final class PlayerSimulator {
         this.breakingDir = null;
     }
 
+    /**
+     * 开始持续使用物品（吃东西 / 拉弓 / 举盾）
+     */
+    public void startUsingItem() {
+        this.useItem = true;
+        this.useItemJustStarted = true;
+    }
+
+    /**
+     * 停止持续使用物品
+     */
+    public void stopUsingItem() {
+        this.useItem = false;
+        this.useItemJustStopped = true;
+    }
+
     public void stopAll() {
-        forward = backward = left = right = false;
-        jump = false;
-        jumpHold = false;
-        sneak = false;
-        sprint = false;
-        sprintOff = false;
-        breaking = false;
-        breakingPos = null;
+        this.forward = this.backward = this.left = this.right = false;
+        this.jump = false;
+        this.jumpHold = false;
+        this.sneak = false;
+        this.sprint = false;
+        this.sprintOff = false;
+        this.breaking = false;
+        this.breakingPos = null;
+        this.useItem = false;
+        this.useItemJustStopped = true;
     }
 
     // ---- getters ----
 
     public boolean isForward() {
-        return forward;
+        return this.forward;
     }
 
     public boolean isBackward() {
-        return backward;
+        return this.backward;
     }
 
     public boolean isLeft() {
-        return left;
+        return this.left;
     }
 
     public boolean isRight() {
-        return right;
+        return this.right;
     }
 
     /**
-     * 是否有任何模拟活动（移动/破坏），用于 Mixin 判断是否替换 input
+     * 是否有任何模拟活动（移动/破坏/使用物品），用于 Mixin 判断是否替换 input
      */
     public boolean isActive() {
-        return forward || backward || left || right || jumpHold || sneak || sprint || breaking;
+        return this.forward || this.backward || this.left || this.right || this.jumpHold || this.sneak || this.sprint || this.breaking || this.useItem;
     }
 
     public boolean isSneakHold() {
-        return sneak;
+        return this.sneak;
     }
 
     public boolean isSprinting() {
-        return sprint;
+        return this.sprint;
     }
 
     public boolean consumeJump() {
-        boolean v = jump;
-        jump = false;
+        boolean v = this.jump;
+        this.jump = false;
         return v;
     }
 
     public boolean isJumpHold() {
-        return jumpHold;
+        return this.jumpHold;
     }
 
     public boolean consumeSneak() {
-        boolean v = sneak;
-        sneak = false;
+        boolean v = this.sneak;
+        this.sneak = false;
         return v;
     }
 
     public boolean consumeSprint() {
-        boolean v = sprint;
-        sprint = false;
+        boolean v = this.sprint;
+        this.sprint = false;
         return v;
     }
 
     public boolean consumeSprintOff() {
-        boolean v = sprintOff;
-        sprintOff = false;
+        boolean v = this.sprintOff;
+        this.sprintOff = false;
         return v;
     }
 
     public Float consumeTargetYaw() {
-        Float v = targetYaw;
-        targetYaw = null;
+        Float v = this.targetYaw;
+        this.targetYaw = null;
         return v;
     }
 
     public Float consumeTargetPitch() {
-        Float v = targetPitch;
-        targetPitch = null;
+        Float v = this.targetPitch;
+        this.targetPitch = null;
         return v;
     }
 
@@ -180,15 +202,15 @@ public final class PlayerSimulator {
      * 是否正在持续破坏方块模式
      */
     public boolean isBreaking() {
-        return breaking;
+        return this.breaking;
     }
 
     public BlockPos getBreakingPos() {
-        return breakingPos;
+        return this.breakingPos;
     }
 
     public Direction getBreakingDir() {
-        return breakingDir;
+        return this.breakingDir;
     }
 
     /**
@@ -199,6 +221,30 @@ public final class PlayerSimulator {
     }
 
     public Object getOriginalInput() {
-        return originalInput;
+        return this.originalInput;
+    }
+
+    // ---- 持续使用物品 getters ----
+
+    public boolean isUsingItem() {
+        return this.useItem;
+    }
+
+    /**
+     * 消费"刚刚开始使用"信号（ScriptEngine tick 读取后重置）
+     */
+    public boolean consumeUseItemStart() {
+        boolean v = this.useItemJustStarted;
+        this.useItemJustStarted = false;
+        return v;
+    }
+
+    /**
+     * 消费"刚刚停止使用"信号
+     */
+    public boolean consumeUseItemStop() {
+        boolean v = this.useItemJustStopped;
+        this.useItemJustStopped = false;
+        return v;
     }
 }
