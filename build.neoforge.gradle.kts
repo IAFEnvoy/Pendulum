@@ -19,7 +19,7 @@ repositories {
 }
 
 dependencies {
-    implementation("maven.modrinth:rhino:${property("deps.rhino")}")?.let { jarJar(it) }
+    implementation("maven.modrinth:rhino:${property("deps.rhino")}")
 
     implementation("maven.modrinth:jupiter:${property("deps.jupiter")}")
 
