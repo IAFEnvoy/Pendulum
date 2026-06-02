@@ -10,9 +10,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * 在 LocalPlayer 每 tick 开始时，如果 PlayerSimulator 有活动状态，
- * 就将 player.input 替换为自定义的 PendulumInput；模拟结束时恢复原始的 KeyboardInput。
- * 参考 Baritone 的 InputOverrideHandler.onTick 模式。
+ * At each LocalPlayer tick start, if PlayerSimulator has active state,
+ * replace player.input with custom PendulumInput; restore original KeyboardInput when simulation ends.
+ * Referenced from Baritone's InputOverrideHandler.onTick pattern.
  */
 @Mixin(LocalPlayer.class)
 public abstract class MixinLocalPlayer {
@@ -23,13 +23,13 @@ public abstract class MixinLocalPlayer {
         PlayerSimulator sim = PlayerSimulator.getInstance();
 
         if (sim.isActive()) {
-            // 脚本活跃 → 替换为自定义 Input（保存原始 KeyboardInput 以便恢复）
+            // Script active -> replace with custom Input (save original KeyboardInput for restoration)
             if (!(self.input instanceof PendulumInput)) {
                 sim.setOriginalInput(self.input);
                 self.input = new PendulumInput();
             }
         } else {
-            // 脚本空闲 → 恢复原始的 KeyboardInput
+            // Script idle -> restore original KeyboardInput
             Input original = (Input) sim.getOriginalInput();
             if (original != null && self.input instanceof PendulumInput) {
                 self.input = original;

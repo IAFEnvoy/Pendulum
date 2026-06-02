@@ -4,28 +4,28 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 
 /**
- * 存储由 JS 脚本控制的玩家移动状态，每 tick 由 PendulumClient 同步到 player.input。
+ * Stores player movement state controlled by JS scripts, synced to player.input each tick.
  */
 public final class PlayerSimulator {
     private static final PlayerSimulator INSTANCE = new PlayerSimulator();
 
-    // 持续移动（每 tick 生效）
+    // Continuous movement (applied each tick)
     private boolean forward, backward, left, right;
-    // 瞬时动作标志（处理完即清除）
+    // Instant action flags (cleared after processing)
     private boolean jump, sneak, sprint, sprintOff;
-    // 旋转（每 tick 应用）
+    // Rotation (applied each tick)
     private Float targetYaw, targetPitch;
-    // 跳跃模式下持续按住
+    // Held while in jump mode
     private boolean jumpHold;
-    // 持续破坏方块
+    // Continuous block breaking
     private BlockPos breakingPos;
     private Direction breakingDir;
     private boolean breaking;
-    // 持续使用物品（吃东西/拉弓/举盾）
+    // Continuous item use (eating/bow/shield)
     private boolean useItem;
     private boolean useItemJustStarted;
     private boolean useItemJustStopped;
-    // 保存原始的 KeyboardInput，以便模拟结束后恢复
+    // Save original KeyboardInput for restoration after simulation ends
     private Object originalInput;
 
     private PlayerSimulator() {
@@ -35,7 +35,7 @@ public final class PlayerSimulator {
         return INSTANCE;
     }
 
-    // ---- setters (被 JS 调用) ----
+    // ---- setters (called by JS) ----
 
     public void setForward(boolean v) {
         this.forward = v;
@@ -79,7 +79,7 @@ public final class PlayerSimulator {
     }
 
     /**
-     * 启用持续破坏方块模式
+     * Enable continuous block breaking mode
      */
     public void setBreaking(BlockPos pos, Direction dir) {
         this.breakingPos = pos;
@@ -88,7 +88,7 @@ public final class PlayerSimulator {
     }
 
     /**
-     * 停止破坏（不清除移动状态）
+     * Stop breaking (does not clear movement state)
      */
     public void stopBreaking() {
         this.breaking = false;
@@ -97,7 +97,7 @@ public final class PlayerSimulator {
     }
 
     /**
-     * 开始持续使用物品（吃东西 / 拉弓 / 举盾）
+     * Start continuous item use (eating / bow / shield)
      */
     public void startUsingItem() {
         this.useItem = true;
@@ -105,7 +105,7 @@ public final class PlayerSimulator {
     }
 
     /**
-     * 停止持续使用物品
+     * Stop continuous item use
      */
     public void stopUsingItem() {
         this.useItem = false;
@@ -144,7 +144,7 @@ public final class PlayerSimulator {
     }
 
     /**
-     * 是否有任何模拟活动（移动/破坏/使用物品），用于 Mixin 判断是否替换 input
+     * Whether any simulation is active (movement/breaking/item use), used by Mixin to decide input override.
      */
     public boolean isActive() {
         return this.forward || this.backward || this.left || this.right || this.jumpHold || this.sneak || this.sprint || this.breaking || this.useItem;
@@ -199,7 +199,7 @@ public final class PlayerSimulator {
     }
 
     /**
-     * 是否正在持续破坏方块模式
+     * Whether in continuous block breaking mode.
      */
     public boolean isBreaking() {
         return this.breaking;
@@ -214,7 +214,7 @@ public final class PlayerSimulator {
     }
 
     /**
-     * Mixin 用：保存/恢复玩家原始的 KeyboardInput
+     * For Mixin: save/restore players original KeyboardInput.
      */
     public void setOriginalInput(Object input) {
         this.originalInput = input;
@@ -224,14 +224,14 @@ public final class PlayerSimulator {
         return this.originalInput;
     }
 
-    // ---- 持续使用物品 getters ----
+    // ---- continuous item use getters ----
 
     public boolean isUsingItem() {
         return this.useItem;
     }
 
     /**
-     * 消费"刚刚开始使用"信号（ScriptEngine tick 读取后重置）
+     * Consume start-use signal (read by ScriptEngine tick then reset).
      */
     public boolean consumeUseItemStart() {
         boolean v = this.useItemJustStarted;
@@ -240,7 +240,7 @@ public final class PlayerSimulator {
     }
 
     /**
-     * 消费"刚刚停止使用"信号
+     * Consume stop-use signal.
      */
     public boolean consumeUseItemStop() {
         boolean v = this.useItemJustStopped;

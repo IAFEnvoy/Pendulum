@@ -14,6 +14,17 @@ jsonlang {
 
 repositories {
     maven("https://maven.parchmentmc.org") { name = "ParchmentMC" }
+    maven("https://cursemaven.com/") { name = "Curse Maven" }
+    maven("https://api.modrinth.com/maven/") { name = "Modrinth Maven" }
+}
+
+dependencies {
+    implementation("maven.modrinth:rhino:${property("deps.rhino")}")?.let { jarJar(it) }
+
+    implementation("maven.modrinth:jupiter:${property("deps.jupiter")}")
+
+    //Baritone don't have full version support so only for compile
+    compileOnly("curse.maven:baritone-simply-1066613:5544753")
 }
 
 neoForge {

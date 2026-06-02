@@ -1,4 +1,6 @@
-package com.iafenvoy.pendulum;
+package com.iafenvoy.pendulum._loader.fabric;
+
+//? if fabric {
 
 import com.iafenvoy.pendulum.config.PendulumConfig;
 import com.iafenvoy.pendulum.mcp.McpServer;
@@ -14,7 +16,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import org.slf4j.Logger;
 
-public final class PendulumClient implements ClientModInitializer {
+public final class PendulumFabric implements ClientModInitializer {
     public static final String MOD_ID = "pendulum";
     public static final Logger LOGGER = LogUtils.getLogger();
 
@@ -27,7 +29,7 @@ public final class PendulumClient implements ClientModInitializer {
 
         ScriptEngine.getInstance().initialize();
 
-        // 脚本结束回调 — msg can be a translation key or raw text
+        // Script end callback — msg can be a translation key or raw text
         ScriptEngine.getInstance().setScriptEndListener(msg -> {
             if (Minecraft.getInstance().player != null) {
                 Component prefix = Component.literal("§e[Pendulum] §r");
@@ -41,7 +43,7 @@ public final class PendulumClient implements ClientModInitializer {
             }
         });
 
-        // 注册 /pendulum 指令
+        // Register /pendulum command
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             var cmd = ClientCommandManager.literal("pendulum")
                     .executes(ctx -> {
@@ -151,10 +153,8 @@ public final class PendulumClient implements ClientModInitializer {
             dispatcher.register(cmd);
         });
 
-        // 每 tick：脚本任务处理 + 持续破坏驱动
-        ClientTickEvents.START_CLIENT_TICK.register(client -> {
-            ScriptEngine.getInstance().onClientTick();
-        });
+        // Each tick: script task processing + continuous break drive
+        ClientTickEvents.START_CLIENT_TICK.register(client -> ScriptEngine.getInstance().onClientTick());
 
         // Auto-start MCP if configured
         if (PendulumConfig.INSTANCE.mcpEnabled.getValue()) {
@@ -168,3 +168,5 @@ public final class PendulumClient implements ClientModInitializer {
         LOGGER.info("Pendulum client initialized.");
     }
 }
+
+//?}

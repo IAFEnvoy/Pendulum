@@ -5,14 +5,14 @@ import net.minecraft.client.player.Input;
 import net.minecraft.client.player.LocalPlayer;
 
 /**
- * 自定义 Input 实现，参考 Baritone 的 PlayerMovementInput。
- * MC 每 tick 调用 input.tick() 时直接从这里读取 PlayerSimulator 的状态，
- * 解决 START_CLIENT_TICK 时序过早导致 forwardImpulse 被覆盖的问题。
+ * Custom Input implementation, based on Baritone's PlayerMovementInput.
+ * When MC calls input.tick() each tick, it reads PlayerSimulator state directly,
+ * solving the issue of START_CLIENT_TICK firing too early causing forwardImpulse overwrite.
  */
 public class PendulumInput extends Input {
 
     public PendulumInput() {
-        // Input 是无参构造
+        // Input uses no-arg constructor
     }
 
     @Override
@@ -30,9 +30,9 @@ public class PendulumInput extends Input {
         this.jumping = sim.isJumpHold();
         this.shiftKeyDown = sim.isSneakHold();
 
-        // 冲刺：通过 sprint 字段驱动
+        // Sprint: driven through sprint field
         if (sim.isSprinting()) {
-            this.forwardImpulse *= 1.3F; // 冲刺时略微加速
+            this.forwardImpulse *= 1.3F; // Slightly faster when sprinting
         }
     }
 }

@@ -35,12 +35,11 @@ dependencies {
     modImplementation("net.fabricmc.fabric-api:fabric-api:${property("deps.fabric-api")}")
     modImplementation("com.terraformersmc:modmenu:${property("deps.mod_menu")}")
 
-    // Mozilla Rhino JavaScript 引擎 (打包进模组)
-    modImplementation("org.mozilla:rhino:1.7.14")
-    include("org.mozilla:rhino:1.7.14")
+    modImplementation("maven.modrinth:rhino:${property("deps.rhino")}")
 
-    modImplementation("maven.modrinth:jupiter:1co6rVbw")
+    modImplementation("maven.modrinth:jupiter:${property("deps.jupiter")}")
 
+    //Baritone don't have full version support so only for compile
     modCompileOnly("curse.maven:baritone-simply-1066613:5544753")
 }
 
@@ -121,11 +120,15 @@ publishMods {
         projectId = property("publish.modrinth") as String
         accessToken = env.MODRINTH_API_KEY.orNull()
         minecraftVersions.addAll(supportedMinecraftVersions)
+        requires("rhino")
+        requires("jupiter")
     }
 
     curseforge {
         projectId = property("publish.curseforge") as String
         accessToken = env.CURSEFORGE_API_KEY.orNull()
         minecraftVersions.addAll(supportedMinecraftVersions)
+        requires("rhino")
+        requires("jupiter")
     }
 }

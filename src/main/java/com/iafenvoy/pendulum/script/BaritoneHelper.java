@@ -8,8 +8,8 @@ import org.slf4j.Logger;
 import java.lang.reflect.Method;
 
 /**
- * 检测 Baritone 是否已加载，并提供线程安全的反射调用。
- * Baritone 为可选前置，未加载时所有方法安全返回 false/空值。
+ * Detects whether Baritone is loaded, and provides thread-safe reflective access.
+ * Baritone is optional; all methods safely return false/empty when not loaded.
  */
 public final class BaritoneHelper {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -38,7 +38,7 @@ public final class BaritoneHelper {
     }
 
     /**
-     * 获取主 Baritone 实例（在游戏线程调用）
+     * Get the primary Baritone instance (call on game thread)
      */
     public static Object getPrimaryBaritone() {
         if (!LOADED) return null;
@@ -55,7 +55,7 @@ public final class BaritoneHelper {
     }
 
     /**
-     * 获取 Baritone Settings
+     * Get Baritone Settings
      */
     public static Object getSettings() {
         if (!LOADED) return null;
@@ -71,7 +71,7 @@ public final class BaritoneHelper {
     }
 
     /**
-     * 获取进程（如 mineProcess / followProcess / buildProcess 等）
+ * Get process (e.g. mineProcess / followProcess / buildProcess)
      */
     public static Object getProcess(Object baritone, String processMethod) {
         try {
@@ -82,7 +82,7 @@ public final class BaritoneHelper {
     }
 
     /**
-     * 执行 baritone 命令
+     * Execute baritone command
      */
     public static boolean executeCommand(Object baritone, String command) {
         try {
@@ -95,7 +95,7 @@ public final class BaritoneHelper {
     }
 
     /**
-     * 取消所有 baritone 行为
+     * Cancel all baritone actions
      */
     public static void cancelAll(Object baritone) {
         try {
@@ -106,7 +106,7 @@ public final class BaritoneHelper {
     }
 
     /**
-     * 检查 baritone 是否处于 pathing 状态
+     * Check if baritone is in pathing state
      */
     public static boolean isPathing(Object baritone) {
         try {
@@ -118,12 +118,12 @@ public final class BaritoneHelper {
     }
 
     /**
-     * 设置 Baritone Settings 中的某个属性值
+     * Set a Baritone Settings property value
      */
     @SuppressWarnings("unchecked")
     public static boolean setSetting(Object settings, String key, Object value) {
         try {
-            // Settings 用反射获取 Setting 字段
+            // Settings - use reflection to get Setting field
             Class<?> settingsClass = settings.getClass();
             java.lang.reflect.Field field = settingsClass.getField(key);
             Object setting = field.get(settings);
@@ -138,7 +138,7 @@ public final class BaritoneHelper {
     }
 
     /**
-     * 获取设置值
+     * Get setting value
      */
     public static Object getSetting(Object settings, String key) {
         try {

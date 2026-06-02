@@ -3,25 +3,25 @@ package com.iafenvoy.pendulum.script;
 import net.minecraft.core.BlockPos;
 
 /**
- * 需要跨 tick 等待完成的同步操作。
- * MinecraftAPI 中的耗时方法会设置此对象，由 ScriptEngine 在每 tick 检查完成状态。
+ * Synchronous operations that require waiting across ticks.
+ * Long-running methods in MinecraftAPI set this object; ScriptEngine checks completion each tick.
  */
 public final class SyncAction {
     public enum Type {
         /**
-         * 破坏方块 — 等待目标位置变为空气
+         * Block breaking - wait for target to become air
          */
         BREAK_BLOCK,
         /**
-         * 等待 1 tick 让服务端处理
+         * Wait 1 tick for server to process
          */
         WAIT_TICK,
         /**
-         * 与方块/物品交互后等待 1 tick
+         * Wait 1 tick after block/item interaction
          */
         USE_ITEM,
         /**
-         * 合成/点击槽位后等待 1 tick
+         * Wait 1 tick after crafting/slot click
          */
         CONTAINER_CLICK
     }
@@ -29,7 +29,7 @@ public final class SyncAction {
     private final Type type;
     private final BlockPos targetPos;
     private int tickCounter;
-    private final int maxTicks; // 超时兜底
+    private final int maxTicks; // timeout fallback
 
     private SyncAction(Type type, BlockPos targetPos, int maxTicks) {
         this.type = type;
@@ -64,7 +64,7 @@ public final class SyncAction {
     }
 
     /**
-     * 每 tick 调用一次，返回 true 表示动作完成或超时
+     * Called each tick; returns true when action completes or times out.
      */
     public boolean tick() {
         this.tickCounter++;

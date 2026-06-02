@@ -2,8 +2,10 @@ package com.iafenvoy.pendulum.script;
 
 import com.iafenvoy.pendulum.config.PendulumConfig;
 import com.mojang.logging.LogUtils;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -23,10 +25,10 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.Function;
-import org.mozilla.javascript.NativeArray;
-import org.mozilla.javascript.Scriptable;
+import dev.latvian.mods.rhino.Context;
+import dev.latvian.mods.rhino.Function;
+import dev.latvian.mods.rhino.NativeArray;
+import dev.latvian.mods.rhino.Scriptable;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -34,27 +36,28 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * 鎸傝浇鍒?JS 鍏ㄥ眬 minecraft 瀵硅薄涓婄殑鎵€鏈夊嚱鏁般€?
- * 鎵€鏈夋柟娉曠鍚嶅繀椤讳负 (Context, Scriptable, Object[], Function)銆?
+ * All API functions exposed on the JS global minecraft object.
+ * All methods must have signature (Context, Scriptable, Object[], Function).
  */
+@SuppressWarnings("unused")
 public final class MinecraftAPI {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Minecraft MC = Minecraft.getInstance();
 
     /**
-     * minecraft 瀵硅薄涓婃毚闇茬殑鎵€鏈夊嚱鏁板悕
+     * All function names exposed on the minecraft object
      */
     public static final List<String> FUNCTION_NAMES = Arrays.asList(
-            // 绉诲姩
+            // Movement
             "forward", "back", "left", "right", "stop",
             "jump", "sneak", "sprint", "stopSprint",
             "lookAt", "setYaw", "setPitch", "getYaw", "getPitch",
             "getX", "getY", "getZ",
-            // 浜や簰
+            // Interaction
             "use", "attack", "breakBlock", "breakBlockAt", "swapHands",
             "drop", "dropAll", "pickBlock", "placeBlock", "placeBlockAt", "jumpAndPlaceBelow",
             "startUse", "stopUse", "useItem",
-            // 鐗╁搧鏍?
+            // Inventory
             "selectHotbar", "getSelectedSlot", "hasItem",
             "getItemInSlot", "getItemInHand", "getItemOffhand", "getAllItems",
             // GUI
@@ -64,28 +67,25 @@ public final class MinecraftAPI {
             "getContainerSize", "getContainerItem", "getContainerAllItems", "getContainerType",
             "getGuiElements",
             "moveItem", "quickMoveItem",
-            // 涓栫晫
+            // World
             "facingBlock", "facingEntity", "getFacingBlock",
             "getBlock", "isBlock", "isBlockByTag", "getBlockState",
             "findBlocks", "findBlocksByTag", "findBlocksInBox",
             "getNearbyEntities", "getNearbyPlayers", "rayTrace",
-            "getLookingEntity",
-            // 鐜╁鐘舵€?
-            "getPlayerHealth", "getPlayerHunger", "getPlayerArmor",
-            "getAttackCooldown", "getReachDistance", "canReach", "canSeeBlock",
+            // Player state
             "getBiomeAt", "getLightLevel", "getDifficulty", "getDimension",
-            // 鑱婂ぉ/鎸囦护
+            // Chat/commands
             "say", "log", "executeCommand",
-            // 鏂囦欢/鎺у埗
+            // Files/control
             "execFile", "getScriptDir", "waitTick",
-            // 杈呭姪
+            // Helper
             "help"
     );
 
-    // ==================== 绉诲姩 ====================
+    // ==================== Movement ====================
 
     /**
-     * forward() 鈥?涓€鐩存寜浣忓墠锛沠orward(ticks) 鈥?鍓嶈繘 ticks 鍒诲悗鑷姩鍋滄
+     * forward() - hold W; forward(ticks) - walk forward for N ticks then stop
      */
     public static void forward(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (args.length > 0) {
@@ -96,7 +96,7 @@ public final class MinecraftAPI {
     }
 
     /**
-     * back() 鈥?涓€鐩存寜浣忓悗锛沚ack(ticks) 鈥?鍚庨€€ ticks 鍒诲悗鑷姩鍋滄
+     * back() - hold S; back(ticks) - walk backward for N ticks then stop
      */
     public static void back(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (args.length > 0) {
@@ -107,7 +107,7 @@ public final class MinecraftAPI {
     }
 
     /**
-     * left() 鈥?涓€鐩存寜浣忓乏锛沴eft(ticks) 鈥?宸︾Щ ticks 鍒诲悗鑷姩鍋滄
+     * left() - hold A; left(ticks) - strafe left for N ticks then stop
      */
     public static void left(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (args.length > 0) {
@@ -118,7 +118,7 @@ public final class MinecraftAPI {
     }
 
     /**
-     * right() 鈥?涓€鐩存寜浣忓彸锛況ight(ticks) 鈥?鍙崇Щ ticks 鍒诲悗鑷姩鍋滄
+     * right() - hold D; right(ticks) - strafe right for N ticks then stop
      */
     public static void right(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (args.length > 0) {
@@ -177,17 +177,17 @@ public final class MinecraftAPI {
     }
 
     public static void jump(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-        boolean hold = args.length > 0 && Context.toBoolean(args[0]);
+        boolean hold = args.length > 0 && cx.toBoolean(args[0]);
         ScriptEngine.runOnGameThread(() -> PlayerSimulator.getInstance().setJump(true));
     }
 
     public static void sneak(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-        boolean v = args.length == 0 || Context.toBoolean(args[0]);
+        boolean v = args.length == 0 || cx.toBoolean(args[0]);
         ScriptEngine.runOnGameThread(() -> PlayerSimulator.getInstance().setSneak(v));
     }
 
     public static void sprint(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-        boolean v = args.length == 0 || Context.toBoolean(args[0]);
+        boolean v = args.length == 0 || cx.toBoolean(args[0]);
         ScriptEngine.runOnGameThread(() -> PlayerSimulator.getInstance().setSprinting(v));
     }
 
@@ -253,11 +253,11 @@ public final class MinecraftAPI {
         return ScriptEngine.submitToGameThread(() -> MC.player != null ? MC.player.getZ() : 0);
     }
 
-    // ==================== 浜や簰 ====================
+    // ==================== Interaction ====================
 
     /**
-     * 使用物品/与方块交互（单击，不保持）
-     * 如需吃东西/拉弓/举盾等长按操作，请用 useItem(ticks) 或 startUse() / stopUse()。
+     * Right-click once (no hold). For sustained actions (eating/bow/shield), use useItem(ticks) or startUse()/stopUse().
+     * useItem(ticks) or startUse()/stopUse() for sustained actions.
      */
     public static void use(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (MC.player == null || MC.gameMode == null) return;
@@ -268,25 +268,25 @@ public final class MinecraftAPI {
     }
 
     /**
-     * startUse() — 开始长按右键（吃东西/拉弓/举盾持续），需配合 stopUse() 停止。
-     * 推荐使用 useItem(ticks) 一步到位。
+     * startUse() - begin holding right-click (eating/bow/shield). Pair with stopUse(). Prefer useItem(ticks).
+     * Prefer useItem(ticks) for one-step usage.
      */
     public static void startUse(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         ScriptEngine.runOnGameThread(() -> PlayerSimulator.getInstance().startUsingItem());
     }
 
     /**
-     * stopUse() — 停止长按右键，释放物品（如射箭、吃完食物、放下盾牌）。
+     * stopUse() - release right-click (shoot arrow, finish eating, lower shield).
      */
     public static void stopUse(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         ScriptEngine.runOnGameThread(() -> PlayerSimulator.getInstance().stopUsingItem());
     }
 
     /**
-     * useItem(ticks) — 持续使用物品 ticks 刻后自动停止。
-     * 例如：mc.useItem(32) 按住右键 32 tick（约 1.6 秒），足够吃完大多数食物。
-     * 拉弓需要约 20 tick 蓄满力，盾牌可以 mc.useItem(100) 长时间举盾。
-     * 返回是否成功开始使用。
+     * useItem(ticks) - hold right-click for N ticks then auto-release.
+     * e.g. mc.useItem(32) holds 32 ticks (~1.6s), enough for most foods.
+     * Bow needs ~20 ticks to charge; shield can use mc.useItem(100).
+     * Returns whether the item use started successfully.
      */
     public static boolean useItem(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (MC.player == null || MC.gameMode == null) return false;
@@ -298,12 +298,12 @@ public final class MinecraftAPI {
     }
 
     /**
-     * 鏀诲嚮瀹炰綋
+     * Attack the entity the player is looking at
      */
     public static void attack(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (!PendulumConfig.INSTANCE.allowAttack.getValue()) return;
         if (MC.player == null || MC.gameMode == null) return;
-        // 1.20.1 的 attack 要求非 null entity，否则 NPE
+        // In 1.20.1, attack requires non-null entity, otherwise NPE
         ScriptEngine.submitToGameThread(() -> {
             if (MC.crosshairPickEntity != null)
                 MC.gameMode.attack(MC.player, MC.crosshairPickEntity);
@@ -314,7 +314,7 @@ public final class MinecraftAPI {
     }
 
     /**
-     * 鐮村潖瑙嗙嚎瀵瑰噯鐨勬柟鍧楋紝鎸佺画鎸変綇鐩村埌鐮村潖锛堝悓姝ョ瓑寰咃級銆傛敞鎰忓皠绾垮彲鑳芥墦鍒伴殰纰嶇墿锛岀簿鍑嗙牬鍧忔帹鑽?breakBlockAt
+     * Break the block at crosshair (hold until broken, sync). For precision, prefer breakBlockAt.
      */
     public static boolean breakBlock(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (!PendulumConfig.INSTANCE.allowBreak.getValue()) return false;
@@ -338,7 +338,7 @@ public final class MinecraftAPI {
     }
 
     /**
-     * 鐩存帴鐮村潖鎸囧畾鍧愭爣鐨勬柟鍧楋紙鏃犻渶灏勭嚎杩借釜锛屼笉浼氭寲閿欙級銆傞厤鍚?findBlocks 浣跨敤銆傚悓姝ョ瓑寰呫€?
+     * Break block at given coordinates directly (no raytrace). Use with findBlocks. Sync wait.
      */
     public static boolean breakBlockAt(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (!PendulumConfig.INSTANCE.allowBreak.getValue()) return false;
@@ -400,9 +400,9 @@ public final class MinecraftAPI {
     }
 
     /**
-     * 在视线对准的方块上放置方块（从快捷栏或指定槽位），同步等待 3 tick。
-     * 注意：依赖准星目标 MC.hitResult，可能因视线投射到非预期方块而放偏。
-     * 推荐：精准放置用 placeBlockAt(x,y,z)，脚下放置用 jumpAndPlaceBelow()。
+     * Place block at crosshair (from hotbar or specified slot). Sync wait 3 ticks.
+     * Note: depends on crosshair target, may place on wrong face.
+     * Prefer placeBlockAt(x,y,z) for precision, or jumpAndPlaceBelow() for underfoot.
      */
     public static boolean placeBlock(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (!PendulumConfig.INSTANCE.allowPlace.getValue()) return false;
@@ -419,9 +419,9 @@ public final class MinecraftAPI {
     }
 
     /**
-     * placeBlockAt(x, y, z, slot?)  — 精确放置方块到指定坐标（无视视线投射）。
-     * 自动计算最近的相邻面进行放置，同步等待 3 tick。返回是否成功。
-     * 推荐：能用 baritone 就用 baritone（br 对象），更稳定可靠。
+     * placeBlockAt(x, y, z, slot?) - place block at exact coords (no raytrace).
+     * Auto-calculates nearest adjacent face. Sync wait 3 ticks. Returns success.
+     * Tip: use baritone (br object) when possible for better reliability.
      */
     public static boolean placeBlockAt(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (!PendulumConfig.INSTANCE.allowPlace.getValue()) return false;
@@ -478,8 +478,8 @@ public final class MinecraftAPI {
     }
 
     /**
-     * jumpAndPlaceBelow()  — 跳起并在脚下放置方块（自动向下看，无视视线投射问题）。
-     * 返回是否成功。适合造桥、填坑等场景。
+     * jumpAndPlaceBelow() - jump and place block underneath (auto look down).
+     * Returns success. Useful for bridging and filling holes.
      */
     public static boolean jumpAndPlaceBelow(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (!PendulumConfig.INSTANCE.allowPlace.getValue()) return false;
@@ -518,7 +518,7 @@ public final class MinecraftAPI {
         return ScriptEngine.submitToGameThread(() -> !MC.level.getBlockState(placePos).isAir());
     }
 
-    // ==================== 鐗╁搧鏍?====================
+    // ==================== Inventory ====================
 
     public static void selectHotbar(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int slot = ((Number) args[0]).intValue() - 1;
@@ -534,11 +534,15 @@ public final class MinecraftAPI {
     }
 
     public static boolean hasItem(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-        String itemName = Context.toString(args[0]);
+        String itemName = cx.toString(args[0]);
         int required = args.length > 1 ? ((Number) args[1]).intValue() : 1;
         return ScriptEngine.submitToGameThread(() -> {
             if (MC.player == null) return false;
+            //? if >=1.21 {
+            /*Item target = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemName));
+            *///?} else {
             Item target = BuiltInRegistries.ITEM.get(new ResourceLocation(itemName));
+            //?}
             int count = 0;
             Inventory inv = MC.player.getInventory();
             for (int i = 0; i < inv.getContainerSize(); i++)
@@ -547,8 +551,9 @@ public final class MinecraftAPI {
         });
     }
 
-    /**
-     * 鑾峰彇鎸囧畾妲戒綅鐨勭墿鍝佽鎯?({id,count,maxCount,durability,maxDurability,name})
+    /*
+     * Get item info for a slot ({id,count,maxCount,durability,maxDurability,name})
+     * ({id,count,maxCount,durability,maxDurability,name})
      */
     public static Scriptable getItemInSlot(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int slot = ((Number) args[0]).intValue();
@@ -560,15 +565,15 @@ public final class MinecraftAPI {
     }
 
     /**
-     * 鑾峰彇鎵嬩笂鐗╁搧璇︽儏
+     * Get held item details
      */
     public static Scriptable getItemInHand(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         return ScriptEngine.submitToGameThread(() ->
                 MC.player != null ? itemStackToObject(cx, thisObj, MC.player.getItemInHand(InteractionHand.MAIN_HAND)) : null);
     }
 
-    /**
-     * 鑾峰彇鍓墜鐗╁搧璇︽儏
+    /*
+     * Get offhand item details.
      */
     public static Scriptable getItemOffhand(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         return ScriptEngine.submitToGameThread(() ->
@@ -576,7 +581,7 @@ public final class MinecraftAPI {
     }
 
     /**
-     * 鑾峰彇鏁翠釜鑳屽寘 [{slot,id,count,...}]
+     * Get entire inventory [{slot,id,count,...}]
      */
     public static Scriptable getAllItems(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         return ScriptEngine.submitToGameThread(() -> {
@@ -588,8 +593,8 @@ public final class MinecraftAPI {
                 if (!stack.isEmpty()) {
                     Scriptable obj = itemStackToObject(cx, thisObj, stack);
                     if (obj != null) {
-                        obj.put("slot", obj, i);
-                        result.put(result.size(), result, obj);
+                        obj.put(cx, "slot", obj, i);
+                        result.put(cx, result.size(), result, obj);
                     }
                 }
             }
@@ -600,12 +605,12 @@ public final class MinecraftAPI {
     private static Scriptable itemStackToObject(Context cx, Scriptable scope, ItemStack stack) {
         if (stack == null || stack.isEmpty()) return null;
         Scriptable obj = cx.newObject(scope);
-        obj.put("id", obj, BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
-        obj.put("count", obj, stack.getCount());
-        obj.put("maxCount", obj, stack.getMaxStackSize());
-        obj.put("durability", obj, stack.getDamageValue());
-        obj.put("maxDurability", obj, stack.getMaxDamage());
-        obj.put("name", obj, stack.getHoverName().getString());
+        obj.put(cx, "id", obj, BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+        obj.put(cx, "count", obj, stack.getCount());
+        obj.put(cx, "maxCount", obj, stack.getMaxStackSize());
+        obj.put(cx, "durability", obj, stack.getDamageValue());
+        obj.put(cx, "maxDurability", obj, stack.getMaxDamage());
+        obj.put(cx, "name", obj, stack.getHoverName().getString());
         return obj;
     }
 
@@ -628,7 +633,7 @@ public final class MinecraftAPI {
     }
 
     /**
-     * 宸﹂敭鐐瑰嚮妲戒綅锛岀瓑寰?1 tick 瀹屾垚
+     * Left-click a slot, wait 1 tick
      */
     public static void clickSlot(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int slotId = ((Number) args[0]).intValue();
@@ -643,7 +648,7 @@ public final class MinecraftAPI {
     }
 
     /**
-     * 鍙抽敭鐐瑰嚮妲戒綅锛岀瓑寰?1 tick 瀹屾垚
+     * Right-click a slot, wait 1 tick
      */
     public static void clickSlotRight(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int slotId = ((Number) args[0]).intValue();
@@ -657,7 +662,7 @@ public final class MinecraftAPI {
     }
 
     /**
-     * 鍚堟垚涓€娆★紝绛夊緟 1 tick 瀹屾垚
+     * Craft once, wait 1 tick
      */
     public static void craft(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         ScriptEngine.submitToGameThread(() -> {
@@ -670,7 +675,7 @@ public final class MinecraftAPI {
     }
 
     /**
-     * 鍚堟垚鍏ㄩ儴锛岀瓑寰?1 tick 瀹屾垚
+     * Craft all, wait 1 tick
      */
     public static void craftAll(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         ScriptEngine.submitToGameThread(() -> {
@@ -683,7 +688,7 @@ public final class MinecraftAPI {
     }
 
     /**
-     * 鑾峰彇褰撳墠瀹瑰櫒鐨勬Ы浣嶆暟
+     * Get current container slot count
      */
     public static double getContainerSize(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         return ScriptEngine.submitToGameThread(() ->
@@ -691,7 +696,7 @@ public final class MinecraftAPI {
     }
 
     /**
-     * 鑾峰彇瀹瑰櫒鎸囧畾妲戒綅鐨勭墿鍝?
+     * Get item in container slot
      */
     public static Scriptable getContainerItem(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int slot = ((Number) args[0]).intValue();
@@ -703,7 +708,7 @@ public final class MinecraftAPI {
     }
 
     /**
-     * 鑾峰彇瀹瑰櫒鎵€鏈夐潪绌烘Ы浣?[{slot,id,count,...}]
+     * Get all non-empty container slots [{slot,id,count,...}]
      */
     public static Scriptable getContainerAllItems(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         return ScriptEngine.submitToGameThread(() -> {
@@ -714,8 +719,8 @@ public final class MinecraftAPI {
                 if (!stack.isEmpty()) {
                     Scriptable obj = itemStackToObject(cx, thisObj, stack);
                     if (obj != null) {
-                        obj.put("slot", obj, i);
-                        result.put(result.size(), result, obj);
+                        obj.put(cx, "slot", obj, i);
+                        result.put(cx, result.size(), result, obj);
                     }
                 }
             }
@@ -724,7 +729,7 @@ public final class MinecraftAPI {
     }
 
     /**
-     * 鑾峰彇瀹瑰櫒绫诲瀷鍚? "crafting_table"/"chest"/"furnace"/"anvil"/"enchanting"/"none"/"unknown"
+     * Get container type name: crafting_table/chest/furnace/anvil/enchanting/none/unknown
      */
     public static String getContainerType(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         return ScriptEngine.submitToGameThread(() -> {
@@ -741,8 +746,8 @@ public final class MinecraftAPI {
     }
 
     /**
-     * 获取当前 Screen 上的非物品槽 GUI 控件列表（按钮、文本、图片等）。
-     * 返回 [{type, id?, text?, x, y, width, height}, ...]
+     * Get non-slot GUI elements on current screen (buttons, labels, etc).
+     * Returns [{type, id?, text?, x, y, width, height}, ...]
      */
     public static Scriptable getGuiElements(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         return ScriptEngine.submitToGameThread(() -> {
@@ -750,7 +755,7 @@ public final class MinecraftAPI {
             if (MC.screen == null) return results;
             for (var child : MC.screen.children()) {
                 Scriptable obj = buildGuiElementObject(cx, thisObj, child);
-                if (obj != null) results.put(results.size(), results, obj);
+                if (obj != null) results.put(cx, results.size(), results, obj);
             }
             return results;
         });
@@ -759,17 +764,17 @@ public final class MinecraftAPI {
     private static Scriptable buildGuiElementObject(Context cx, Scriptable scope, Object widget) {
         Scriptable obj = cx.newObject(scope);
         Class<?> clazz = widget.getClass();
-        obj.put("type", obj, clazz.getSimpleName());
+        obj.put(cx, "type", obj, clazz.getSimpleName());
         // AbstractWidget members
         try {
             var xField = findField(clazz, "x", "getX", "field_22786");
             var yField = findField(clazz, "y", "getY", "field_22787");
             var wField = findField(clazz, "width", "getWidth", "field_22788");
             var hField = findField(clazz, "height", "getHeight", "field_22789");
-            if (xField != null) obj.put("x", obj, ((Number) xField.get(widget)).intValue());
-            if (yField != null) obj.put("y", obj, ((Number) yField.get(widget)).intValue());
-            if (wField != null) obj.put("width", obj, ((Number) wField.get(widget)).intValue());
-            if (hField != null) obj.put("height", obj, ((Number) hField.get(widget)).intValue());
+            if (xField != null) obj.put(cx, "x", obj, ((Number) xField.get(widget)).intValue());
+            if (yField != null) obj.put(cx, "y", obj, ((Number) yField.get(widget)).intValue());
+            if (wField != null) obj.put(cx, "width", obj, ((Number) wField.get(widget)).intValue());
+            if (hField != null) obj.put(cx, "height", obj, ((Number) hField.get(widget)).intValue());
         } catch (Exception ignored) {
         }
         // Text
@@ -777,14 +782,14 @@ public final class MinecraftAPI {
             var msgField = findField(clazz, "message", "getMessage", "field_22791");
             if (msgField != null) {
                 Object msg = msgField.get(widget);
-                obj.put("text", obj, msg instanceof net.minecraft.network.chat.Component c ? c.getString() : msg.toString());
+                obj.put(cx, "text", obj, msg instanceof net.minecraft.network.chat.Component c ? c.getString() : msg.toString());
             }
         } catch (Exception ignored) {
         }
         // Id for buttons (optional)
         try {
             var idField = findField(clazz, "id");
-            if (idField != null) obj.put("id", obj, idField.get(widget).toString());
+            if (idField != null) obj.put(cx, "id", obj, idField.get(widget).toString());
         } catch (Exception ignored) {
         }
         return obj;
@@ -806,7 +811,7 @@ public final class MinecraftAPI {
             if (name.startsWith("get")) {
                 try {
                     java.lang.reflect.Method m = clazz.getMethod(name);
-                    // Not a field lookup — we'd need a different approach
+                    // Not a field lookup - would need a different approach
                 } catch (NoSuchMethodException ignored) {
                 }
             }
@@ -814,8 +819,8 @@ public final class MinecraftAPI {
         return null;
     }
 
-    /**
-     * 鍦ㄥ鍣ㄥ唴绉诲姩鐗╁搧锛堝乏閿偣鍑?fromSlot锛屽啀鐐瑰嚮 toSlot锛?
+    /*
+     * Move item in container (left-click fromSlot, then left-click toSlot)
      */
     public static void moveItem(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int from = ((Number) args[0]).intValue();
@@ -830,8 +835,8 @@ public final class MinecraftAPI {
         ScriptEngine.waitTicks(1);
     }
 
-    /**
-     * Shift+鐐瑰嚮蹇€熺Щ鍔ㄧ墿鍝侊紙瀹瑰櫒鈫旇儗鍖咃級
+    /*
+     * Shift+click to quick-move item (container to inventory)
      */
     public static void quickMoveItem(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int slot = ((Number) args[0]).intValue();
@@ -844,24 +849,32 @@ public final class MinecraftAPI {
         ScriptEngine.waitTicks(1);
     }
 
-    // ==================== 涓栫晫 ====================
+    // ==================== World ====================
 
     public static boolean facingBlock(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-        String name = Context.toString(args[0]);
+        String name = cx.toString(args[0]);
         return ScriptEngine.submitToGameThread(() -> {
             if (MC.hitResult == null || MC.hitResult.getType() != HitResult.Type.BLOCK) return false;
             BlockHitResult bhr = (BlockHitResult) MC.hitResult;
+            //? if >=1.21 {
+            /*ResourceLocation rl = ResourceLocation.parse(name);
+            *///?} else {
             ResourceLocation rl = new ResourceLocation(name);
+            //?}
             return BuiltInRegistries.BLOCK.getKey(MC.level.getBlockState(bhr.getBlockPos()).getBlock()).equals(rl);
         });
     }
 
     public static boolean facingEntity(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-        String name = Context.toString(args[0]);
+        String name = cx.toString(args[0]);
         return ScriptEngine.submitToGameThread(() -> {
             if (MC.hitResult == null || MC.hitResult.getType() != HitResult.Type.ENTITY) return false;
             EntityHitResult ehr = (EntityHitResult) MC.hitResult;
+            //? if >=1.21 {
+            /*ResourceLocation rl = ResourceLocation.parse(name);
+            *///?} else {
             ResourceLocation rl = new ResourceLocation(name);
+            //?}
             return BuiltInRegistries.ENTITY_TYPE.getKey(ehr.getEntity().getType()).equals(rl);
         });
     }
@@ -885,7 +898,7 @@ public final class MinecraftAPI {
     }
 
     /**
-     * 鑾峰彇鏂瑰潡瀹屾暣鐘舵€?({id, properties: {facing: 'north', ...}})
+     * Get full block state ({id, properties: {facing: 'north', ...}})
      */
     public static Scriptable getBlockState(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int x = ((Number) args[0]).intValue();
@@ -895,18 +908,18 @@ public final class MinecraftAPI {
             if (MC.level == null) return null;
             BlockState state = MC.level.getBlockState(new BlockPos(x, y, z));
             Scriptable obj = cx.newObject(thisObj);
-            obj.put("id", obj, BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString());
+            obj.put(cx, "id", obj, BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString());
             Scriptable props = cx.newObject(thisObj);
             for (var entry : state.getValues().entrySet()) {
-                props.put(entry.getKey().getName(), props, entry.getValue().toString());
+                props.put(cx, entry.getKey().getName(), props, entry.getValue().toString());
             }
-            obj.put("properties", obj, props);
+            obj.put(cx, "properties", obj, props);
             return obj;
         });
     }
 
-    /**
-     * 鑾峰彇鍑嗘槦瀵瑰噯鐨勫疄浣撹鎯?
+    /*
+     * Get info about the entity at the crosshair.
      */
     public static Scriptable getLookingEntity(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         return ScriptEngine.submitToGameThread(() -> {
@@ -915,35 +928,39 @@ public final class MinecraftAPI {
             EntityHitResult ehr = (EntityHitResult) MC.hitResult;
             Entity e = ehr.getEntity();
             Scriptable obj = cx.newObject(thisObj);
-            obj.put("type", obj, BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).toString());
-            obj.put("name", obj, e.getName().getString());
-            obj.put("x", obj, e.getX());
-            obj.put("y", obj, e.getY());
-            obj.put("z", obj, e.getZ());
-            obj.put("distance", obj, MC.player.distanceTo(e));
+            obj.put(cx, "type", obj, BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).toString());
+            obj.put(cx, "name", obj, e.getName().getString());
+            obj.put(cx, "x", obj, e.getX());
+            obj.put(cx, "y", obj, e.getY());
+            obj.put(cx, "z", obj, e.getZ());
+            obj.put(cx, "distance", obj, MC.player.distanceTo(e));
             if (e instanceof net.minecraft.world.entity.LivingEntity le) {
-                obj.put("health", obj, le.getHealth());
-                obj.put("maxHealth", obj, le.getMaxHealth());
-                obj.put("isAlive", obj, le.isAlive());
+                obj.put(cx, "health", obj, le.getHealth());
+                obj.put(cx, "maxHealth", obj, le.getMaxHealth());
+                obj.put(cx, "isAlive", obj, le.isAlive());
             }
             return obj;
         });
     }
+    // ==================== World Query ====================
+    // ==================== World Query ====================
 
-    // ==================== 涓栫晫鏌ヨ ====================
-
-    /**
-     * 浠ョ帺瀹朵负涓績锛屽湪鐞冧綋鍗婂緞鍐呮煡鎵炬寚瀹氭柟鍧?ID锛岃繑鍥?[{x,y,z}, ...]銆?
+    /*
+     * Find blocks by ID in a sphere around player, returns [{x,y,z}, ...].
      * findBlocks('minecraft:diamond_ore', 16)
      */
     public static Scriptable findBlocks(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-        String blockId = Context.toString(args[0]);
+        String blockId = cx.toString(args[0]);
         int radius = args.length > 1 ? ((Number) args[1]).intValue() : 16;
-        // 娓告垙绾跨▼閲囬泦鏁版嵁锛孞S 绾跨▼鏋勯€?Rhino 瀵硅薄
+        // Game thread collects data, JS thread builds Rhino objects
         List<int[]> positions = ScriptEngine.submitToGameThread(() -> {
             List<int[]> list = new ArrayList<>();
             if (MC.level == null || MC.player == null) return list;
+            //? if >=1.21 {
+            /*Block target = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(blockId));
+            *///?} else {
             Block target = BuiltInRegistries.BLOCK.get(new ResourceLocation(blockId));
+            //?}
             BlockPos center = MC.player.blockPosition();
             int r2 = radius * radius;
             for (int dx = -radius; dx <= radius; dx++)
@@ -959,24 +976,28 @@ public final class MinecraftAPI {
         NativeArray result = (NativeArray) cx.newArray(thisObj, 0);
         for (int[] p : positions) {
             Scriptable obj = cx.newObject(thisObj);
-            obj.put("x", obj, p[0]);
-            obj.put("y", obj, p[1]);
-            obj.put("z", obj, p[2]);
-            result.put(result.size(), result, obj);
+            obj.put(cx, "x", obj, p[0]);
+            obj.put(cx, "y", obj, p[1]);
+            obj.put(cx, "z", obj, p[2]);
+            result.put(cx, result.size(), result, obj);
         }
         return result;
     }
 
-    /**
-     * 浠ョ帺瀹朵负涓績锛屽湪鐞冧綋鍗婂緞鍐呮煡鎵炬寚瀹?Tag 鐨勬柟鍧楋紝杩斿洖 [{x,y,z}, ...]銆?
+    /*
+     * Find blocks by tag in a sphere around player, returns [{x,y,z}, ...].
      */
     public static Scriptable findBlocksByTag(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-        String tagStr = Context.toString(args[0]);
+        String tagStr = cx.toString(args[0]);
         int radius = args.length > 1 ? ((Number) args[1]).intValue() : 16;
         List<int[]> positions = ScriptEngine.submitToGameThread(() -> {
             List<int[]> list = new ArrayList<>();
             if (MC.level == null || MC.player == null) return list;
+            //? if >=1.21 {
+            /*TagKey<Block> tag = TagKey.create(BuiltInRegistries.BLOCK.key(), ResourceLocation.parse(tagStr));
+            *///?} else {
             TagKey<Block> tag = TagKey.create(BuiltInRegistries.BLOCK.key(), new ResourceLocation(tagStr));
+            //?}
             BlockPos center = MC.player.blockPosition();
             int r2 = radius * radius;
             for (int dx = -radius; dx <= radius; dx++)
@@ -992,16 +1013,16 @@ public final class MinecraftAPI {
         NativeArray result = (NativeArray) cx.newArray(thisObj, 0);
         for (int[] p : positions) {
             Scriptable obj = cx.newObject(thisObj);
-            obj.put("x", obj, p[0]);
-            obj.put("y", obj, p[1]);
-            obj.put("z", obj, p[2]);
-            result.put(result.size(), result, obj);
+            obj.put(cx, "x", obj, p[0]);
+            obj.put(cx, "y", obj, p[1]);
+            obj.put(cx, "z", obj, p[2]);
+            result.put(cx, result.size(), result, obj);
         }
         return result;
     }
 
     /**
-     * 鍦ㄧ煩褰㈠尯鍩熷唴鏌ユ壘鎸囧畾鏂瑰潡锛堟湭鎸囧畾 blockId 鍒欒繑鍥炴墍鏈夐潪绌烘皵鏂瑰潡锛夈€?
+     * Find blocks in a box area (no blockId = all non-air blocks)
      */
     public static Scriptable findBlocksInBox(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int x1 = ((Number) args[0]).intValue();
@@ -1010,11 +1031,15 @@ public final class MinecraftAPI {
         int x2 = ((Number) args[3]).intValue();
         int y2 = ((Number) args[4]).intValue();
         int z2 = ((Number) args[5]).intValue();
-        String blockId = args.length > 6 ? Context.toString(args[6]) : null;
+        String blockId = args.length > 6 ? cx.toString(args[6]) : null;
         List<Object[]> entries = ScriptEngine.submitToGameThread(() -> {
             List<Object[]> list = new ArrayList<>();
             if (MC.level == null) return list;
+            //? if >=1.21 {
+            /*Block target = blockId != null ? BuiltInRegistries.BLOCK.get(ResourceLocation.parse(blockId)) : null;
+            *///?} else {
             Block target = blockId != null ? BuiltInRegistries.BLOCK.get(new ResourceLocation(blockId)) : null;
+            //?}
             int minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
             int minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
             int minZ = Math.min(z1, z2), maxZ = Math.max(z1, z2);
@@ -1031,53 +1056,61 @@ public final class MinecraftAPI {
         NativeArray result = (NativeArray) cx.newArray(thisObj, 0);
         for (Object[] e : entries) {
             Scriptable obj = cx.newObject(thisObj);
-            obj.put("x", obj, e[0]);
-            obj.put("y", obj, e[1]);
-            obj.put("z", obj, e[2]);
-            if (e[3] != null) obj.put("block", obj, e[3]);
-            result.put(result.size(), result, obj);
+            obj.put(cx, "x", obj, e[0]);
+            obj.put(cx, "y", obj, e[1]);
+            obj.put(cx, "z", obj, e[2]);
+            if (e[3] != null) obj.put(cx, "block", obj, e[3]);
+            result.put(cx, result.size(), result, obj);
         }
         return result;
     }
 
     /**
-     * 鍒ゆ柇 (x,y,z) 澶勬柟鍧楁槸鍚﹀尮閰嶇粰瀹?ID
+     * Check if block at (x,y,z) matches given ID
      */
     public static boolean isBlock(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int x = ((Number) args[0]).intValue();
         int y = ((Number) args[1]).intValue();
         int z = ((Number) args[2]).intValue();
-        String blockId = Context.toString(args[3]);
+        String blockId = cx.toString(args[3]);
         return ScriptEngine.submitToGameThread(() -> {
             if (MC.level == null) return false;
+            //? if >=1.21 {
+            /*Block target = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(blockId));
+            *///?} else {
             Block target = BuiltInRegistries.BLOCK.get(new ResourceLocation(blockId));
+            //?}
             return MC.level.getBlockState(new BlockPos(x, y, z)).is(target);
         });
     }
 
     /**
-     * 鍒ゆ柇 (x,y,z) 澶勬柟鍧楁槸鍚﹀尮閰嶇粰瀹?Tag
+     * Check if block at (x,y,z) matches given tag
      */
     public static boolean isBlockByTag(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int x = ((Number) args[0]).intValue();
         int y = ((Number) args[1]).intValue();
         int z = ((Number) args[2]).intValue();
-        String tagStr = Context.toString(args[3]);
+        String tagStr = cx.toString(args[3]);
         return ScriptEngine.submitToGameThread(() -> {
             if (MC.level == null) return false;
+            //? if >=1.21 {
+            /*TagKey<Block> tag = TagKey.create(BuiltInRegistries.BLOCK.key(), ResourceLocation.parse(tagStr));
+            *///?} else {
             TagKey<Block> tag = TagKey.create(BuiltInRegistries.BLOCK.key(), new ResourceLocation(tagStr));
+            //?}
             return MC.level.getBlockState(new BlockPos(x, y, z)).is(tag);
         });
     }
 
     /**
-     * 鑾峰彇闄勮繎瀹炰綋鍒楄〃锛屽彲閫夎繃婊ょ被鍨嬨€?
-     * getNearbyEntities(radius=16, 'entityType'?)
-     * 杩斿洖 [{name, type, x, y, z, distance}, ...]
+     * Get nearby entities, optional type filter.
+     * getNearbyEntities(radius=16, entityType?)
+     * Returns [{name, type, x, y, z, distance}, ...]
      */
     public static Scriptable getNearbyEntities(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         double radius = ((Number) args[0]).doubleValue();
-        String typeFilter = args.length > 1 ? Context.toString(args[1]) : null;
+        String typeFilter = args.length > 1 ? cx.toString(args[1]) : null;
         List<Object[]> entities = ScriptEngine.submitToGameThread(() -> {
             List<Object[]> list = new ArrayList<>();
             if (MC.level == null || MC.player == null) return list;
@@ -1100,19 +1133,20 @@ public final class MinecraftAPI {
         NativeArray result = (NativeArray) cx.newArray(thisObj, 0);
         for (Object[] e : entities) {
             Scriptable obj = cx.newObject(thisObj);
-            obj.put("name", obj, e[0]);
-            obj.put("type", obj, e[1]);
-            obj.put("x", obj, e[2]);
-            obj.put("y", obj, e[3]);
-            obj.put("z", obj, e[4]);
-            obj.put("distance", obj, e[5]);
-            result.put(result.size(), result, obj);
+            obj.put(cx, "name", obj, e[0]);
+            obj.put(cx, "type", obj, e[1]);
+            obj.put(cx, "x", obj, e[2]);
+            obj.put(cx, "y", obj, e[3]);
+            obj.put(cx, "z", obj, e[4]);
+            obj.put(cx, "distance", obj, e[5]);
+            result.put(cx, result.size(), result, obj);
         }
         return result;
     }
 
-    /**
-     * 鑾峰彇闄勮繎鐜╁鍒楄〃銆?
+    /*
+     * Get nearby players list.
+     * Returns list of nearby players.
      */
     public static Scriptable getNearbyPlayers(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         double radius = ((Number) args[0]).doubleValue();
@@ -1130,19 +1164,20 @@ public final class MinecraftAPI {
         NativeArray result = (NativeArray) cx.newArray(thisObj, 0);
         for (Object[] p : players) {
             Scriptable obj = cx.newObject(thisObj);
-            obj.put("name", obj, p[0]);
-            obj.put("x", obj, p[1]);
-            obj.put("y", obj, p[2]);
-            obj.put("z", obj, p[3]);
-            obj.put("distance", obj, p[4]);
-            result.put(result.size(), result, obj);
+            obj.put(cx, "name", obj, p[0]);
+            obj.put(cx, "x", obj, p[1]);
+            obj.put(cx, "y", obj, p[2]);
+            obj.put(cx, "z", obj, p[3]);
+            obj.put(cx, "distance", obj, p[4]);
+            result.put(cx, result.size(), result, obj);
         }
         return result;
     }
 
-    /**
-     * 浠庣帺瀹惰瑙掑彂灏勫皠绾匡紝杩斿洖绗竴涓鎾炪€?
-     * rayTrace(maxDist=5.0) 鈫?{type:'block'|'entity'|'miss', x,y,z, face?, entityName?}
+    /*
+     * Cast a ray from player eyes, return first hit.
+     * rayTrace(maxDist=5.0) -> {type:block|entity|miss, x,y,z, face?, entityName?}
+     * rayTrace(maxDist=5.0) -> {type:block|entity|miss, x,y,z, face?, entityName?}
      */
     public static Scriptable rayTrace(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         double maxDist = args.length > 0 ? ((Number) args[0]).doubleValue() : 5.0;
@@ -1199,11 +1234,10 @@ public final class MinecraftAPI {
         });
         Scriptable result = cx.newObject(thisObj);
         for (java.util.Map.Entry<String, Object> e : hitData.entrySet())
-            result.put(e.getKey(), result, e.getValue());
+            result.put(cx, e.getKey(), result, e.getValue());
         return result;
     }
-
-    // ==================== 鐜╁鐘舵€?====================
+    // ==================== Player State ====================
 
     public static double getPlayerHealth(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         return ScriptEngine.submitToGameThread(() -> MC.player != null ? MC.player.getHealth() : 0);
@@ -1223,11 +1257,16 @@ public final class MinecraftAPI {
 
     public static double getReachDistance(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         return ScriptEngine.submitToGameThread(() ->
+                //? if >=1.21 {
+                /*MC.player != null ? MC.player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.BLOCK_INTERACTION_RANGE) : 4.5);
+                *///?} else {
                 MC.player != null ? MC.gameMode.getPickRange() : 4.5);
+                //?}
     }
 
-    /**
-     * 鐜╁鑳藉惁澶熷埌 (x,y,z) 鈥?璺濈鍒ゆ柇
+    /*
+     * Whether player can reach (x,y,z) - distance check.
+     * Distance-based reach check to (x,y,z).
      */
     public static boolean canReach(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         double x = ((Number) args[0]).doubleValue();
@@ -1236,12 +1275,17 @@ public final class MinecraftAPI {
         return ScriptEngine.submitToGameThread(() -> {
             if (MC.player == null) return false;
             double dist = MC.player.getEyePosition().distanceTo(new Vec3(x + 0.5, y + 0.5, z + 0.5));
+            //? if >=1.21 {
+            /*return dist <= MC.player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.BLOCK_INTERACTION_RANGE) + 1.0;
+            *///?} else {
             return dist <= MC.gameMode.getPickRange() + 1.0;
+            //?}
         });
     }
 
-    /**
-     * 鐜╁鑳藉惁鐪嬪埌鏂瑰潡锛堣绾挎棤閬尅锛?
+    /*
+     * Whether the player can see a block (no obstructions on ray).
+     * Line-of-sight check for a block position.
      */
     public static boolean canSeeBlock(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int x = ((Number) args[0]).intValue();
@@ -1256,8 +1300,8 @@ public final class MinecraftAPI {
             return bhr.getType() != HitResult.Type.MISS && bhr.getBlockPos().equals(new BlockPos(x, y, z));
         });
     }
-
-    // ==================== 鐜淇℃伅 ====================
+    // ==================== Environment ====================
+    // ==================== Environment ====================
 
     public static String getBiomeAt(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int x = ((Number) args[0]).intValue();
@@ -1288,61 +1332,62 @@ public final class MinecraftAPI {
                 MC.level != null ? MC.level.dimension().location().toString() : "unknown");
     }
 
-    // ==================== 鑱婂ぉ ====================
+    // ==================== Chat ====================
 
     public static void say(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (!PendulumConfig.INSTANCE.allowSay.getValue()) {
             ScriptEngine.submitToGameThread(() -> {
                 if (MC.player != null)
-                    MC.player.displayClientMessage(Component.literal("§c[Pendulum] Chat disabled by config permission."), false);
+                    MC.player.displayClientMessage(Component.literal("[Pendulum] Chat disabled by config permission.").withStyle(ChatFormatting.RED), false);
             });
             return;
         }
-        String msg = Context.toString(args[0]);
+        String msg = cx.toString(args[0]);
         ScriptEngine.submitToGameThread(() -> {
             if (MC.player != null) MC.player.connection.sendChat(msg);
         });
     }
 
-    /**
-     * 鎵ц瀹㈡埛绔懡浠わ紙濡?/give /tp /gamemode 绛夛級
+    /*
+     * Execute a client-side command (e.g. /give /tp /gamemode).
      */
     public static void executeCommand(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         if (!PendulumConfig.INSTANCE.allowExecuteCommand.getValue()) {
             ScriptEngine.submitToGameThread(() -> {
                 if (MC.player != null)
-                    MC.player.displayClientMessage(Component.literal("§c[Pendulum] Commands disabled by config permission."), false);
+                    MC.player.displayClientMessage(Component.literal("[Pendulum] Commands disabled by config permission.").withStyle(ChatFormatting.RED), false);
             });
             return;
         }
-        String cmd = Context.toString(args[0]);
+        String cmd = cx.toString(args[0]);
         ScriptEngine.submitToGameThread(() -> {
             if (MC.player != null) MC.player.connection.sendCommand(cmd.startsWith("/") ? cmd.substring(1) : cmd);
         });
     }
 
     public static void log(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-        String msg = Context.toString(args[0]);
+        String msg = cx.toString(args[0]);
         ScriptEngine.submitToGameThread(() -> {
             if (MC.player != null)
-                MC.player.displayClientMessage(Component.literal("§e[Pendulum] §r").append(Component.literal(msg)), false);
+                MC.player.displayClientMessage(Component.literal("[Pendulum] ").withStyle(ChatFormatting.YELLOW).append(Component.literal(msg)), false);
         });
     }
 
-    // 渚?console.log 浣跨敤
+    // e.g. console.log usage
     public static void consoleLog(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < args.length; i++) {
             if (i > 0) sb.append(" ");
-            sb.append(Context.toString(args[i]));
+            sb.append(cx.toString(args[i]));
         }
         LOGGER.info("[JS] {}", sb);
     }
 
-    // ==================== 鏂囦欢/鎺у埗 ====================
+    // ==================== Files/Control ====================
 
-    /**
-     * 鏆傚仠鑴氭湰鎵ц ticks 涓父鎴忓埢锛堥粯璁?1锛?
+    /*
+     * Pause script execution for N game ticks (default 1).
+     * Pauses for N game ticks (default 1).
      */
     public static void waitTick(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         int ticks = args.length > 0 ? ((Number) args[0]).intValue() : 1;
@@ -1350,34 +1395,33 @@ public final class MinecraftAPI {
     }
 
     public static void execFile(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-        String path = Context.toString(args[0]);
+        String path = cx.toString(args[0]);
         ScriptEngine.getInstance().execFile(path);
     }
 
     public static String getScriptDir(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         return ScriptEngine.getInstance().getScriptDir().toString();
     }
-
-    // ==================== 甯姪锛堜緵 JS 鍜屽懡浠ゅ叡鍚屼娇鐢級 ====================
+    // ==================== Help ====================
 
     public static String helpString() {
-        return "搂6" + net.minecraft.client.resources.language.I18n.get("pendulum.help.title") + "\n" +
-                "搂e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.movement") + "\n" +
-                "  搂7" + net.minecraft.client.resources.language.I18n.get("pendulum.help.movement2") + "\n" +
-                "搂e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.rotation") + "\n" +
-                "搂e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.position") + "\n" +
-                "搂e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.interaction") + "\n" +
-                "搂e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.inventory") + "\n" +
-                "搂e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.gui") + "\n" +
-                "搂e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.crafting") + "\n" +
-                "搂e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.world_query") + "\n" +
-                "  搂7" + net.minecraft.client.resources.language.I18n.get("pendulum.help.world_query2") + "\n" +
-                "  搂7" + net.minecraft.client.resources.language.I18n.get("pendulum.help.world_query3") + "\n" +
-                "搂e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.facing") + "\n" +
-                "搂e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.chat") + "\n" +
-                "搂e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.files") + "\n" +
-                "搂e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.baritone") + "\n" +
-                "搂e" + net.minecraft.client.resources.language.I18n.get("pendulum.help.control");
+        return ChatFormatting.GOLD + I18n.get("pendulum.help.title") + "\n" +
+                ChatFormatting.YELLOW + I18n.get("pendulum.help.movement") + "\n" +
+                "  " + ChatFormatting.GRAY + I18n.get("pendulum.help.movement2") + "\n" +
+                ChatFormatting.YELLOW + I18n.get("pendulum.help.rotation") + "\n" +
+                ChatFormatting.YELLOW + I18n.get("pendulum.help.position") + "\n" +
+                ChatFormatting.YELLOW + I18n.get("pendulum.help.interaction") + "\n" +
+                ChatFormatting.YELLOW + I18n.get("pendulum.help.inventory") + "\n" +
+                ChatFormatting.YELLOW + I18n.get("pendulum.help.gui") + "\n" +
+                ChatFormatting.YELLOW + I18n.get("pendulum.help.crafting") + "\n" +
+                ChatFormatting.YELLOW + I18n.get("pendulum.help.world_query") + "\n" +
+                "  " + ChatFormatting.GRAY + I18n.get("pendulum.help.world_query2") + "\n" +
+                "  " + ChatFormatting.GRAY + I18n.get("pendulum.help.world_query3") + "\n" +
+                ChatFormatting.YELLOW + I18n.get("pendulum.help.facing") + "\n" +
+                ChatFormatting.YELLOW + I18n.get("pendulum.help.chat") + "\n" +
+                ChatFormatting.YELLOW + I18n.get("pendulum.help.files") + "\n" +
+                ChatFormatting.YELLOW + I18n.get("pendulum.help.baritone") + "\n" +
+                ChatFormatting.YELLOW + I18n.get("pendulum.help.control");
     }
 
     public static void help(Context cx, Scriptable thisObj, Object[] args, Function funObj) {

@@ -5,7 +5,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
-import org.mozilla.javascript.*;
+import dev.latvian.mods.rhino.*;
 import org.slf4j.Logger;
 
 import java.nio.file.Files;
@@ -15,9 +15,9 @@ import java.util.concurrent.*;
 import java.util.function.Supplier;
 
 /**
- * Rhino JavaScript 引擎封装。
- * 脚本在独立线程执行，MC API 调用通过任务队列提交到游戏线程并阻塞等待结果。
- * 参考 Baritone 的 tick-driven + ComputerCraft 的线程模型。
+ * Rhino JavaScript engine wrapper.
+ * Scripts execute on a separate thread; MC API calls are submitted to the game thread via a task queue, blocking until completion.
+ * Inspired by Baritone's tick-driven model and ComputerCraft's threading.
  */
 public final class ScriptEngine {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -50,42 +50,54 @@ public final class ScriptEngine {
     public void initialize() {
         if (this.initialized) return;
         try {
+            //? if >=1.21 {
+            /*dev.latvian.mods.rhino.ContextFactory factory = new dev.latvian.mods.rhino.ContextFactory();
+            Context cx = factory.enter();
+            *///?} else {
             Context cx = Context.enter();
+            //?}
             this.scope = cx.initStandardObjects();
             ScriptableObject mcObj = (ScriptableObject) cx.newObject(this.scope);
             mcObj.defineFunctionProperties(
+                    cx,
                     MinecraftAPI.FUNCTION_NAMES.toArray(new String[0]),
                     MinecraftAPI.class, ScriptableObject.DONTENUM);
-            ScriptableObject.putProperty(this.scope, "minecraft", mcObj);
-            ScriptableObject.putProperty(this.scope, "game", mcObj);
-            ScriptableObject.putProperty(this.scope, "mc", mcObj);
+            ScriptableObject.putProperty(this.scope, "minecraft", mcObj, cx);
+            ScriptableObject.putProperty(this.scope, "game", mcObj, cx);
+            ScriptableObject.putProperty(this.scope, "mc", mcObj, cx);
 
-            // baritone 对象（可选前置，始终注册，调用时检查）
+            // baritone object (optional; always registered, checked on call)
             ScriptableObject brObj = (ScriptableObject) cx.newObject(this.scope);
             brObj.defineFunctionProperties(
+                    cx,
                     BaritoneAPI.FUNCTION_NAMES.toArray(new String[0]),
                     BaritoneAPI.class, ScriptableObject.DONTENUM);
-            // goto 是 Java 保留字，手动绑定
-            brObj.put("goto", brObj,
+            // goto is a Java reserved word; bind manually
+            //? if >=1.21 {
+            /*java.lang.reflect.Method gotoMethod = BaritoneAPI.class.getMethod("goto_", Context.class, Scriptable.class, Object[].class, Function.class);
+            dev.latvian.mods.rhino.CachedClassStorage storage = cx.getCachedClassStorage(true);
+            dev.latvian.mods.rhino.CachedClassInfo info = storage.get(BaritoneAPI.class);
+            brObj.put(cx, "goto", brObj, new FunctionObject("goto", new dev.latvian.mods.rhino.CachedExecutableInfo(info, gotoMethod), brObj, cx));
+            *///?} else {
+            brObj.put(cx, "goto", brObj,
                     new FunctionObject("goto",
                             BaritoneAPI.class.getMethod("goto_", Context.class, Scriptable.class, Object[].class, Function.class),
-                            brObj));
-            ScriptableObject.putProperty(this.scope, "baritone", brObj);
-            ScriptableObject.putProperty(this.scope, "br", brObj);
+                            brObj, cx));
+            //?}
+            ScriptableObject.putProperty(this.scope, "baritone", brObj, cx);
+            ScriptableObject.putProperty(this.scope, "br", brObj, cx);
 
             ScriptableObject consoleObj = (ScriptableObject) cx.newObject(this.scope);
-            consoleObj.defineFunctionProperties(new String[]{"log"}, MinecraftAPI.class, ScriptableObject.DONTENUM);
-            ScriptableObject.putProperty(this.scope, "console", consoleObj);
+            consoleObj.defineFunctionProperties(cx, new String[]{"log"}, MinecraftAPI.class, ScriptableObject.DONTENUM);
+            ScriptableObject.putProperty(this.scope, "console", consoleObj, cx);
             this.initialized = true;
             LOGGER.info("Pendulum ScriptEngine initialized.");
         } catch (Exception e) {
             LOGGER.error("Failed to initialize", e);
-        } finally {
-            Context.exit();
         }
     }
 
-    // ==================== 游戏线程任务提交 ====================
+    // ==================== Game Thread Task Submission ====================
 
     static <T> T submitToGameThread(Supplier<T> task) {
         CompletableFuture<T> future = new CompletableFuture<>();
@@ -114,14 +126,14 @@ public final class ScriptEngine {
     }
 
     /**
-     * fire-and-forget：只入队不阻塞，适合 move 等简单状态设置
+     * fire-and-forget: enqueue without blocking; suitable for simple state sets like movement
      */
     static void runOnGameThread(Runnable task) {
         getInstance().gameTasks.add(task);
     }
 
     /**
-     * 在 JS 线程调用：等待方块破坏完成
+     * Called from JS thread: wait for block breaking to complete
      */
     static boolean waitForBreak() {
         int timeoutTicks = PendulumConfig.INSTANCE.breakTimeout.getValue();
@@ -143,7 +155,7 @@ public final class ScriptEngine {
     }
 
     /**
-     * 让 JS 线程等待一个游戏 tick
+     * Make JS thread wait for one game tick
      */
     private static void singleTickSleep() {
         try {
@@ -154,13 +166,13 @@ public final class ScriptEngine {
     }
 
     /**
-     * 在 JS 线程调用：等待 ticks 个游戏刻
+     * Called from JS thread: wait for N game ticks
      */
     static void waitTicks(int ticks) {
         for (int i = 0; i < ticks; i++) singleTickSleep();
     }
 
-    // ==================== 游戏线程 tick ====================
+    // ==================== Game Thread Tick ====================
 
     public void onClientTick() {
         for (int i = 0; i < 50; i++) {
@@ -189,9 +201,9 @@ public final class ScriptEngine {
     }
 
     /**
-     * 每 tick 检查：如果 PlayerSimulator 标记为持续使用物品，调用 gameMode.useItem()；
-     * 如果刚停止使用，调用 gameMode.releaseUsingItem()。
-     * 支持吃东西、拉弓、举盾等需要长按右键的操作。
+     * Each tick: if PlayerSimulator is marked for continuous item use, call gameMode.useItem();
+     * if just stopped using, call gameMode.releaseUsingItem().
+     * Supports eating, bow-drawing, shield-blocking, and other hold-right-click actions.
      */
     private void applyItemUse() {
         PlayerSimulator sim = PlayerSimulator.getInstance();
@@ -206,7 +218,7 @@ public final class ScriptEngine {
         }
     }
 
-    // ==================== 执行入口 ====================
+    // ==================== Execution Entry ====================
 
     public void exec(String code) {
         if (!this.initialized) this.initialize();
@@ -243,10 +255,12 @@ public final class ScriptEngine {
 
     private void startScript(String code, String sourceName) {
         this.currentFuture = this.scriptThread.submit(() -> {
+            //? if >=1.21 {
+            /*Context cx = new dev.latvian.mods.rhino.ContextFactory().enter();
+            *///?} else {
             Context cx = Context.enter();
+            //?}
             try {
-                cx.setLanguageVersion(Context.VERSION_ES6);
-                cx.setOptimizationLevel(-1);
                 cx.evaluateString(this.scope, code, sourceName, 1, null);
                 this.running = false;
                 this.currentSource = null;
@@ -263,8 +277,6 @@ public final class ScriptEngine {
                 this.running = false;
                 this.currentSource = null;
                 this.notifyScriptEnd("pendulum.command.error");
-            } finally {
-                Context.exit();
             }
         });
     }
@@ -287,7 +299,7 @@ public final class ScriptEngine {
     }
 
     /**
-     * MCP 专用：执行代码并返回 JS 表达式的值（而非 "Done."）。
+     * MCP-specific: execute code and return JS expression value (instead of "Done.").
      */
     public void execWithCallback(String code, CompletableFuture<String> resultFuture) {
         if (!this.initialized) this.initialize();
@@ -298,12 +310,14 @@ public final class ScriptEngine {
         this.running = true;
         this.currentSource = "<mcp>";
         this.currentFuture = this.scriptThread.submit(() -> {
+            //? if >=1.21 {
+            /*Context cx = new dev.latvian.mods.rhino.ContextFactory().enter();
+            *///?} else {
             Context cx = Context.enter();
+            //?}
             try {
-                cx.setLanguageVersion(Context.VERSION_ES6);
-                cx.setOptimizationLevel(-1);
                 Object result = cx.evaluateString(this.scope, code, "<mcp>", 1, null);
-                String output = Context.toString(result);
+                String output = cx.toString(result);
                 this.running = false;
                 this.currentSource = null;
                 resultFuture.complete(output);
@@ -319,8 +333,6 @@ public final class ScriptEngine {
                 this.running = false;
                 this.currentSource = null;
                 resultFuture.complete("Error: " + t.getMessage());
-            } finally {
-                Context.exit();
             }
         });
     }
@@ -334,7 +346,7 @@ public final class ScriptEngine {
         return SCRIPT_DIR.toAbsolutePath();
     }
 
-    // ==================== 回调 ====================
+    // ==================== Callbacks ====================
 
     private ScriptEndListener endListener;
 

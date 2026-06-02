@@ -16,10 +16,10 @@
   "environment": "*",
   "entrypoints": {
     "client": [
-      "com.iafenvoy.pendulum.PendulumClient"
+      "com.iafenvoy.pendulum._loader.fabric.PendulumFabric"
     ],
     "modmenu": [
-      "com.iafenvoy.pendulum.compat.ModMenu"
+      "com.iafenvoy.pendulum._loader.fabric.ModMenu"
     ]
   },
   "mixins": [

@@ -10,7 +10,11 @@ public class PendulumConfig extends FileConfigContainer {
     public static final PendulumConfig INSTANCE = new PendulumConfig();
 
     public PendulumConfig() {
+        //? if >=1.21 {
+        /*super(ResourceLocation.fromNamespaceAndPath("pendulum", "config"), "pendulum.config.title", "./config/pendulum.json");
+        *///?} else {
         super(new ResourceLocation("pendulum", "config"), "pendulum.config.title", "./config/pendulum.json");
+        //?}
     }
 
     public final IntegerEntry breakTimeout = IntegerEntry.builder("pendulum.config.break_timeout", 200).tooltip("pendulum.config.break_timeout.tooltip").key("break_timeout").min(20).max(1200).build();

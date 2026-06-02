@@ -1,16 +1,30 @@
 ﻿# Pendulum
 
-**Client-side JavaScript executor for Minecraft.** Automate player actions — movement, construction, combat, inventory, world queries, and Baritone pathfinding. Designed for both human players and AI agents.
+**Client-side JavaScript executor for Minecraft.** Automate player actions — movement, construction, combat, inventory,
+world queries, and `Baritone` supported. Designed for both human players and AI agents.
+
+This mod is partly inspired by `Playwright.js`, which allows agents to control web browsers via JavaScript. Pendulum
+brings that same power to Minecraft, enabling complex automation and AI integration through a simple JS API.
+
+## Version Support
+
+| Minecraft | Fabric | Forge | NeoForge | Status          |
+|-----------|--------|-------|----------|-----------------|
+| 1.20.1    | ✅      | ✅     | —        | Fully Supported |
+| 1.21.1    | ✅      | —     | ✅        | Fully Supported |
+| 26.1.2    | 🔨     | —     | 🔨       | In development  |
 
 ## Features
 
 ### 🧑 For Players
+
 - **`/pendulum execute`** — run JavaScript inline in chat
 - **`/pendulum file`** — run `.js` scripts from `.minecraft/pendulum/`
 - **`mc.*`** — 80+ API functions: move, mine, build, craft, query the world
 - **`br.*`** — 45 Baritone functions: pathfinding, mining, farming, building schematics
 
 ### 🤖 For AI Agents
+
 - **MCP JSON-RPC 2.0 over TCP** — native AI agent integration
 - **`pendulum_eval`** — execute arbitrary JS and return results
 - **`pendulum_screenshot`** — capture the game view
@@ -79,12 +93,6 @@ br.command('baritone command')   execute any Baritone command
 mc.help() / br.help()            show full API reference in chat
 ```
 
-## Installation
-
-- **Minecraft 1.20.1** + **Fabric Loader** + **Fabric API** (≥0.92.0)
-- Drop `.jar` into `mods/`
-- **Baritone** is optional → install to unlock `br.*` functions
-
 ## MCP Server
 
 Start the MCP server for AI agent access:
@@ -95,12 +103,5 @@ Start the MCP server for AI agent access:
 /pendulum mcp status     # check if running
 ```
 
-Configure your MCP client to connect to `localhost:25566` (default). See [wiki/agent-guide/AGENT.md](wiki/agent-guide/AGENT.md) for the complete API reference.
-
-## Documentation
-
-| Guide | For |
-|-------|-----|
-| [Getting Started](wiki/getting-started/installation.md) | Installation & first script |
-| [Player Guide](wiki/player-guide/commands.md) | All player-facing features |
-| [Agent Guide](wiki/agent-guide/AGENT.md) | Complete API reference for AI agents |
+Configure your MCP client to connect to `localhost:25566` (default).
+See [wiki/agent-guide/AGENT.md](wiki/agent-guide/AGENT.md) for the complete API reference.
