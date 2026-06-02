@@ -45,39 +45,14 @@ public final class MinecraftAPI {
     private static final Minecraft MC = Minecraft.getInstance();
 
     /**
-     * All function names exposed on the minecraft object
+     * Utility functions exposed directly on the mc/minecraft/game object.
+     * Domain-specific functions are grouped: mc.player.*, mc.world.*, mc.inv.*, mc.gui.*
      */
     public static final List<String> FUNCTION_NAMES = Arrays.asList(
-            // Movement
-            "forward", "back", "left", "right", "stop",
-            "jump", "sneak", "sprint", "stopSprint",
-            "lookAt", "setYaw", "setPitch", "getYaw", "getPitch",
-            "getX", "getY", "getZ",
-            // Interaction
-            "use", "attack", "breakBlock", "breakBlockAt", "swapHands",
-            "drop", "dropAll", "pickBlock", "placeBlock", "placeBlockAt", "jumpAndPlaceBelow",
-            "startUse", "stopUse", "useItem",
-            // Inventory
-            "selectHotbar", "getSelectedSlot", "hasItem",
-            "getItemInSlot", "getItemInHand", "getItemOffhand", "getAllItems",
-            // GUI
-            "closeGui", "isGuiOpen", "getGuiTitle",
-            "clickSlot", "clickSlotRight",
-            "craft", "craftAll",
-            "getContainerSize", "getContainerItem", "getContainerAllItems", "getContainerType",
-            "getGuiElements",
-            "moveItem", "quickMoveItem",
-            // World
-            "facingBlock", "facingEntity", "getFacingBlock",
-            "getBlock", "isBlock", "isBlockByTag", "getBlockState",
-            "findBlocks", "findBlocksByTag", "findBlocksInBox",
-            "getNearbyEntities", "getNearbyPlayers", "rayTrace",
-            // Player state
-            "getBiomeAt", "getLightLevel", "getDifficulty", "getDimension",
             // Chat/commands
             "say", "log", "executeCommand",
-            // Files/control
-            "execFile", "getScriptDir", "waitTick",
+            // Script control
+            "waitTick", "execFile", "getScriptDir",
             // Helper
             "help"
     );

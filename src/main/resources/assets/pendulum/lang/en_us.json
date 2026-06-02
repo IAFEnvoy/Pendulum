@@ -78,5 +78,7 @@
   "pendulum.config.allow_place": "Allow Place",
   "pendulum.config.allow_place.tooltip": "Allow scripts to place blocks.",
   "pendulum.config.allow_attack": "Allow Attack",
-  "pendulum.config.allow_attack.tooltip": "Allow scripts to attack entities."
+  "pendulum.config.allow_attack.tooltip": "Allow scripts to attack entities.",
+  "pendulum.title.script_running": "Script Running",
+  "pendulum.title.mcp_shared": "Shared with AI Agent"
 }

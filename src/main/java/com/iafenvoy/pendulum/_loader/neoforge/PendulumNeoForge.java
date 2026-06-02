@@ -191,6 +191,7 @@ public final class PendulumNeoForge {
     public void onEvent(Event event) {
         if (event.getClass().getName().equals("net.neoforged.neoforge.client.event.ClientTickEvent$Pre")) {
             ScriptEngine.getInstance().onClientTick();
+            McpServer.onClientTick();
         }
     }
 }

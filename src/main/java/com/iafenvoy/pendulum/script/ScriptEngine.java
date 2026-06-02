@@ -1,5 +1,9 @@
 package com.iafenvoy.pendulum.script;
 
+import com.iafenvoy.pendulum.api.GuiAPI;
+import com.iafenvoy.pendulum.api.InventoryAPI;
+import com.iafenvoy.pendulum.api.PlayerAPI;
+import com.iafenvoy.pendulum.api.WorldAPI;
 import com.iafenvoy.pendulum.config.PendulumConfig;
 import com.iafenvoy.pendulum.util.PendulumInput;
 import com.mojang.logging.LogUtils;
@@ -37,6 +41,7 @@ public final class ScriptEngine {
     private volatile boolean running;
     private volatile String currentSource;
     private volatile Future<?> currentFuture;
+    private volatile boolean mcpConnected;
 
     private ScriptEngine() {
     }
@@ -47,6 +52,10 @@ public final class ScriptEngine {
 
     public static ScriptEngine getInstance() {
         return Holder.INSTANCE;
+    }
+
+    public void setMcpConnected(boolean connected) {
+        this.mcpConnected = connected;
     }
 
     public void initialize() {
@@ -67,6 +76,38 @@ public final class ScriptEngine {
             ScriptableObject.putProperty(this.scope, "minecraft", mcObj, cx);
             ScriptableObject.putProperty(this.scope, "game", mcObj, cx);
             ScriptableObject.putProperty(this.scope, "mc", mcObj, cx);
+
+            // mc.player sub-object — movement, rotation, interaction, player state
+            ScriptableObject playerObj = (ScriptableObject) cx.newObject(this.scope);
+            playerObj.defineFunctionProperties(
+                    cx,
+                    PlayerAPI.FUNCTION_NAMES.toArray(new String[0]),
+                    MinecraftAPI.class, ScriptableObject.DONTENUM);
+            ScriptableObject.putProperty(mcObj, "player", playerObj, cx);
+
+            // mc.world sub-object — block/entity/environment queries
+            ScriptableObject worldObj = (ScriptableObject) cx.newObject(this.scope);
+            worldObj.defineFunctionProperties(
+                    cx,
+                    WorldAPI.FUNCTION_NAMES.toArray(new String[0]),
+                    MinecraftAPI.class, ScriptableObject.DONTENUM);
+            ScriptableObject.putProperty(mcObj, "world", worldObj, cx);
+
+            // mc.inv sub-object — inventory & container
+            ScriptableObject invObj = (ScriptableObject) cx.newObject(this.scope);
+            invObj.defineFunctionProperties(
+                    cx,
+                    InventoryAPI.FUNCTION_NAMES.toArray(new String[0]),
+                    MinecraftAPI.class, ScriptableObject.DONTENUM);
+            ScriptableObject.putProperty(mcObj, "inv", invObj, cx);
+
+            // mc.gui sub-object — screen interaction & container operations
+            ScriptableObject guiObj = (ScriptableObject) cx.newObject(this.scope);
+            guiObj.defineFunctionProperties(
+                    cx,
+                    GuiAPI.FUNCTION_NAMES.toArray(new String[0]),
+                    GuiAPI.class, ScriptableObject.DONTENUM);
+            ScriptableObject.putProperty(mcObj, "gui", guiObj, cx);
 
             // baritone object (optional; always registered, checked on call)
             ScriptableObject brObj = (ScriptableObject) cx.newObject(this.scope);
@@ -101,7 +142,7 @@ public final class ScriptEngine {
 
     // ==================== Game Thread Task Submission ====================
 
-    static <T> T submitToGameThread(Supplier<T> task) {
+    public static <T> T submitToGameThread(Supplier<T> task) {
         CompletableFuture<T> future = new CompletableFuture<>();
         getInstance().gameTasks.add(() -> {
             try {
@@ -120,7 +161,7 @@ public final class ScriptEngine {
         }
     }
 
-    static void submitToGameThread(Runnable task) {
+    public static void submitToGameThread(Runnable task) {
         submitToGameThread(() -> {
             task.run();
             return null;
@@ -130,7 +171,7 @@ public final class ScriptEngine {
     /**
      * fire-and-forget: enqueue without blocking; suitable for simple state sets like movement
      */
-    static void runOnGameThread(Runnable task) {
+    public static void runOnGameThread(Runnable task) {
         getInstance().gameTasks.add(task);
     }
 
@@ -170,7 +211,7 @@ public final class ScriptEngine {
     /**
      * Called from JS thread: wait for N game ticks
      */
-    static void waitTicks(int ticks) {
+    public static void waitTicks(int ticks) {
         for (int i = 0; i < ticks; i++) singleTickSleep();
     }
 
@@ -202,6 +243,51 @@ public final class ScriptEngine {
         }
         this.applyBlockBreaking();
         this.applyItemUse();
+        this.updateWindowTitle();
+    }
+
+    /**
+     * Update the game window title to reflect Pendulum state.
+     * When a script is running: "Minecraft 1.20.1 | 脚本运行中"
+     * When MCP is connected: "Minecraft 1.20.1 | 已与智能体共享"
+     * Like VS Code's title bar when remote connections are active.
+     */
+    private void updateWindowTitle() {
+        try {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.getWindow() == null) return;
+
+            // Read current title via reflection (Window has no public getter)
+            String baseTitle = "Minecraft";
+            try {
+                java.lang.reflect.Field titleField = mc.getWindow().getClass().getDeclaredField("title");
+                titleField.setAccessible(true);
+                String currentTitle = (String) titleField.get(mc.getWindow());
+                if (currentTitle != null && !currentTitle.isEmpty()) baseTitle = currentTitle;
+            } catch (Exception ignored) {}
+
+            String scriptSuffix = net.minecraft.client.resources.language.I18n.get("pendulum.title.script_running");
+            String mcpSuffix = net.minecraft.client.resources.language.I18n.get("pendulum.title.mcp_shared");
+
+            // Strip existing Pendulum suffix
+            if (baseTitle.contains(" | " + scriptSuffix)) {
+                baseTitle = baseTitle.replace(" | " + scriptSuffix, "");
+            }
+            if (baseTitle.contains(" | " + mcpSuffix)) {
+                baseTitle = baseTitle.replace(" | " + mcpSuffix, "");
+            }
+
+            // Append new suffix based on priority (MCP > script running)
+            if (this.mcpConnected) {
+                mc.getWindow().setTitle(baseTitle + " | " + mcpSuffix);
+            } else if (this.running) {
+                mc.getWindow().setTitle(baseTitle + " | " + scriptSuffix);
+            } else {
+                mc.getWindow().setTitle(baseTitle);
+            }
+        } catch (Exception e) {
+            // Title update is cosmetic — never crash the tick
+        }
     }
 
     private void applyBlockBreaking() {

@@ -22,7 +22,7 @@ For detailed documentation, see the [Documentation](https://docs.iafenvoy.com/do
 
 - **`/pendulum execute`** — run JavaScript inline in chat
 - **`/pendulum file`** — run `.js` scripts from `.minecraft/pendulum/`
-- **`mc.*`** — 80+ API functions: move, mine, build, craft, query the world
+- **`mc.*`** — 80+ API functions: `mc.player.forward()`, `mc.world.findBlocks()`, `mc.inv.hasItem()`, `mc.gui.click()`, and more
 - **`br.*`** — 45 Baritone functions: pathfinding, mining, farming, building schematics
 
 ### 🤖 For AI Agents
@@ -31,6 +31,9 @@ For detailed documentation, see the [Documentation](https://docs.iafenvoy.com/do
 - **`pendulum_eval`** — execute arbitrary JS and return results
 - **`pendulum_screenshot`** — capture the game view
 - **`pendulum_gui_elements`** — read all visible GUI controls
+- **`pendulum_click`** / **`pendulum_click_button`** — click GUI elements
+- **`pendulum_enumerate_widgets`** — full recursive widget tree
+- **`pendulum_type_text`** / **`pendulum_press_key`** — keyboard input
 - **`pendulum_status`** / **`pendulum_abort`** — manage script state
 - Compatible with VS Code Copilot, Claude Desktop, and any MCP client
 
@@ -38,13 +41,16 @@ For detailed documentation, see the [Documentation](https://docs.iafenvoy.com/do
 
 ```js
 // Walk forward 1 second
-/pendulum execute mc.forward(20)
+/pendulum execute mc.player.forward(20)
 
 // Mine all pumpkins nearby
-/pendulum execute for(let p of mc.findBlocks('minecraft:pumpkin',8)){ mc.breakBlockAt(p.x,p.y,p.z) }
+/pendulum execute for(let p of mc.world.findBlocks('minecraft:pumpkin',8)){ mc.player.breakBlockAt(p.x,p.y,p.z) }
 
 // Run a script file
 /pendulum file farm.js
+
+// AI Agent workflow: screenshot + click
+pendulum_screenshot  →  pendulum_click_button("Done")  →  pendulum_type_text("Hello", true)
 ```
 
 ## MCP Server

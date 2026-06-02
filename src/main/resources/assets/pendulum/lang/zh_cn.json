@@ -78,5 +78,7 @@
   "pendulum.config.allow_place": "允许放置方块",
   "pendulum.config.allow_place.tooltip": "允许脚本放置方块。",
   "pendulum.config.allow_attack": "允许攻击",
-  "pendulum.config.allow_attack.tooltip": "允许脚本攻击实体。"
+  "pendulum.config.allow_attack.tooltip": "允许脚本攻击实体。",
+  "pendulum.title.script_running": "脚本运行中",
+  "pendulum.title.mcp_shared": "已与智能体共享"
 }

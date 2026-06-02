@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "commonjs",
+    "checkJs": true,
+    "types": []
+  },
+  "include": [
+    "pendulum.d.ts",
+    "../**/*.js"
+  ]
+}

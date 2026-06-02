@@ -154,7 +154,10 @@ public final class PendulumFabric implements ClientModInitializer {
         });
 
         // Each tick: script task processing + continuous break drive
-        ClientTickEvents.START_CLIENT_TICK.register(client -> ScriptEngine.getInstance().onClientTick());
+        ClientTickEvents.START_CLIENT_TICK.register(client -> {
+            ScriptEngine.getInstance().onClientTick();
+            McpServer.onClientTick();
+        });
 
         // Auto-start MCP if configured
         if (PendulumConfig.INSTANCE.mcpEnabled.getValue()) {

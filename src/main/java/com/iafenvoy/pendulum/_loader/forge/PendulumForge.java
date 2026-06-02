@@ -181,6 +181,7 @@ public final class PendulumForge {
     public void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase == TickEvent.Phase.START) {
             ScriptEngine.getInstance().onClientTick();
+            McpServer.onClientTick();
         }
     }
 }
