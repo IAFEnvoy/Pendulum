@@ -1,7 +1,7 @@
 {
-  "pendulum.command.aborted": "脚本已终止。",
-  "pendulum.command.already_running": "已有脚本正在运行。请先使用 /pendulum abort 终止。",
-  "pendulum.command.done": "完成。",
+  "pendulum.command.aborted": "脚本已终止",
+  "pendulum.command.already_running": "已有脚本正在运行。请先使用 /pendulum abort 终止",
+  "pendulum.command.done": "执行完成",
   "pendulum.command.error": "错误: %s",
   "pendulum.command.file_not_found": "文件不存在: %s",
   "pendulum.command.error_reading_file": "读取文件出错: %s",

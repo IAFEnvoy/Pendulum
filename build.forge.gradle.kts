@@ -19,10 +19,6 @@ repositories {
 }
 
 dependencies {
-    annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
-//    modImplementation("io.github.llamalad7:mixinextras-common:0.2.0")?.let { annotationProcessor(it) }
-//    modImplementation("io.github.llamalad7:mixinextras-forge:0.2.0")?.let { jarJar(it) }
-
     modImplementation("maven.modrinth:rhino:${property("deps.rhino")}")?.let { jarJar(it) }
 
     modImplementation("maven.modrinth:jupiter:${property("deps.jupiter")}")
@@ -60,11 +56,6 @@ legacyForge {
     sourceSets["main"].resources.srcDir("src/main/generated")
 }
 
-mixin {
-    add(sourceSets.main.get(), "${property("mod.id")}-refmap.json")
-    config("${property("mod.id")}.mixins.json")
-}
-
 tasks {
     processResources {
         exclude("**/fabric.mod.json", "**/neoforge.mods.toml", "**/*.accesswidener")
@@ -82,7 +73,6 @@ tasks {
     }
 
     jar {
-        manifest.attributes["MixinConfigs"] = "${project.property("mod.id")}.mixins.json"
         finalizedBy("reobfJar")
     }
 }
@@ -143,11 +133,13 @@ publishMods {
         projectId = property("publish.modrinth") as String
         accessToken = env.MODRINTH_API_KEY.orNull()
         minecraftVersions.addAll(supportedMinecraftVersions)
+        requires("rhino", "jupiter")
     }
 
     curseforge {
         projectId = property("publish.curseforge") as String
         accessToken = env.CURSEFORGE_API_KEY.orNull()
         minecraftVersions.addAll(supportedMinecraftVersions)
+        requires("rhino", "jupiter")
     }
 }

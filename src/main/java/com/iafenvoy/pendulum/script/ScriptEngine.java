@@ -1,8 +1,10 @@
 package com.iafenvoy.pendulum.script;
 
 import com.iafenvoy.pendulum.config.PendulumConfig;
+import com.iafenvoy.pendulum.util.PendulumInput;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.Input;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
 import dev.latvian.mods.rhino.*;
@@ -175,6 +177,24 @@ public final class ScriptEngine {
     // ==================== Game Thread Tick ====================
 
     public void onClientTick() {
+        // Swap player.input when PlayerSimulator is active, restore when idle.
+        // Replaces the LocalPlayer Mixin — does the same thing from the tick event.
+        PlayerSimulator sim = PlayerSimulator.getInstance();
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null) {
+            if (sim.isActive()) {
+                if (!(mc.player.input instanceof PendulumInput)) {
+                    sim.setOriginalInput(mc.player.input);
+                    mc.player.input = new PendulumInput();
+                }
+            } else {
+                if (mc.player.input instanceof PendulumInput) {
+                    mc.player.input = (Input) sim.getOriginalInput();
+                    sim.setOriginalInput(null);
+                }
+            }
+        }
+
         for (int i = 0; i < 50; i++) {
             Runnable task = this.gameTasks.poll();
             if (task == null) break;

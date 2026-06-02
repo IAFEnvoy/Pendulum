@@ -17,6 +17,7 @@ import java.util.List;
  * All functions exposed on the JS global "baritone" (br) object.
  * Baritone is optional; calling any function when not loaded will warn and stop the script.
  */
+@SuppressWarnings("unused")
 public final class BaritoneAPI {
     private static final Logger LOGGER = LogUtils.getLogger();
 
@@ -199,7 +200,11 @@ public final class BaritoneAPI {
             Object process = BaritoneHelper.getProcess(baritone, "getGetToBlockProcess");
             if (process == null) return;
             try {
+                //? if >=1.21 {
+                /*Block block = net.minecraft.core.registries.BuiltInRegistries.BLOCK.get(ResourceLocation.parse(blockId));
+                *///?} else {
                 Block block = net.minecraft.core.registries.BuiltInRegistries.BLOCK.get(new ResourceLocation(blockId));
+                //?}
                 process.getClass().getMethod("getToBlock", Block.class).invoke(process, block);
             } catch (Exception e) {
                 LOGGER.error("Failed to start getToBlock", e);

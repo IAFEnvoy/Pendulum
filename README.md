@@ -10,11 +10,13 @@ brings that same power to Minecraft, enabling complex automation and AI integrat
 
 | Minecraft | Fabric | Forge | NeoForge | Status          |
 |-----------|--------|-------|----------|-----------------|
-| 1.20.1    | ✅      | ✅     | —        | Fully Supported |
-| 1.21.1    | ✅      | —     | ✅        | Fully Supported |
-| 26.1.2    | 🔨     | —     | 🔨       | In development  |
+| 1.20.1    | ✅      | ✅     |          | Fully Supported |
+| 1.21.1    | ✅      | ❌     | ✅        | Fully Supported |
+| 26.1.2    | 🔨     | ❌     | 🔨       | In development  |
 
 ## Features
+
+For detailed documentation, see the [Documentation](https://docs.iafenvoy.com/docs/mod/pendulum/)
 
 ### 🧑 For Players
 
@@ -45,54 +47,6 @@ brings that same power to Minecraft, enabling complex automation and AI integrat
 /pendulum file farm.js
 ```
 
-## API at a Glance
-
-```
-mc.forward(20)                   walk forward; args=ticks, omit to hold
-mc.back/left/right(ticks?)       directional movement
-mc.stop()                        release all movement keys
-mc.jump(hold?) / mc.sneak(hold?) / mc.sprint(hold?)
-mc.lookAt(x, y, z)               face a coordinate
-mc.setYaw(y) / mc.setPitch(p)
-mc.getX() / mc.getY() / mc.getZ()
-
-mc.breakBlock()                  break block under crosshair (waits)
-mc.breakBlockAt(x, y, z)         break specific coordinate (recommended)
-mc.placeBlockAt(x, y, z)         place block precisely (no crosshair drift)
-mc.jumpAndPlaceBelow()           jump up & place block under your feet
-mc.useItem(32)                   hold right-click 32 ticks (eat/bow/shield)
-mc.startUse() / mc.stopUse()     manual hold/release right-click
-mc.use()                         single right-click
-mc.attack()                      left-click attack
-mc.swapHands() / mc.drop() / mc.dropAll()
-
-mc.selectHotbar(1-9)             switch hotbar slot
-mc.getItemInHand()               → {id, count, name, ...}
-mc.getAllItems()                 → [{slot, id, count, ...}]
-mc.hasItem('minecraft:dirt', 64)
-
-mc.findBlocks('diamond_ore', 16) → [{x,y,z}]
-mc.findBlocksInBox(x1,y1,z1,x2,y2,z2, id?)
-mc.getNearbyPlayers(radius)      → [{name, x, y, z, dist}]
-mc.rayTrace(maxDist?)            → {type, x, y, z, ...}
-
-mc.say('hello') / mc.log('info')
-mc.waitTick(ticks?)
-mc.closeGui() / mc.isGuiOpen() / mc.getGuiTitle()
-mc.clickSlot(id) / mc.quickMoveItem(fromSlot)
-mc.getContainerAllItems() / mc.getContainerType()
-
-// Baritone (requires Baritone mod)
-br.goto(x, y, z)                 pathfind to coordinates
-br.mine('diamond_ore', 64)       automated mining
-br.surface()                     return to the surface
-br.isActive() → boolean          check if Baritone is pathing
-br.stop()                        cancel all Baritone tasks
-br.command('baritone command')   execute any Baritone command
-
-mc.help() / br.help()            show full API reference in chat
-```
-
 ## MCP Server
 
 Start the MCP server for AI agent access:
@@ -104,4 +58,3 @@ Start the MCP server for AI agent access:
 ```
 
 Configure your MCP client to connect to `localhost:25566` (default).
-See [wiki/agent-guide/AGENT.md](wiki/agent-guide/AGENT.md) for the complete API reference.
