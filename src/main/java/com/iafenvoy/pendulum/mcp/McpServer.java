@@ -171,18 +171,13 @@ public final class McpServer {
             return jsonRpcError(id, -32600, "Invalid Request");
         }
 
-        switch (method) {
-            case "initialize":
-                return this.handleInitialize(id, req);
-            case "notifications/initialized":
-                return null; // No response for notifications
-            case "tools/list":
-                return this.handleToolsList(id);
-            case "tools/call":
-                return this.handleToolsCall(id, req);
-            default:
-                return jsonRpcError(id, -32601, "Method not found: " + method);
-        }
+        return switch (method) {
+            case "initialize" -> this.handleInitialize(id, req);
+            case "notifications/initialized" -> null; // No response for notifications
+            case "tools/list" -> this.handleToolsList(id);
+            case "tools/call" -> this.handleToolsCall(id, req);
+            default -> jsonRpcError(id, -32601, "Method not found: " + method);
+        };
     }
 
     private String handleInitialize(Object id, JsonObject req) {

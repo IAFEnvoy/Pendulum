@@ -9,6 +9,7 @@ import com.iafenvoy.pendulum.util.PendulumInput;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.Input;
+import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
 import dev.latvian.mods.rhino.*;
@@ -243,7 +244,7 @@ public final class ScriptEngine {
         }
         this.applyBlockBreaking();
         this.applyItemUse();
-        this.updateWindowTitle();
+        mc.updateTitle();
     }
 
     /**
@@ -252,42 +253,10 @@ public final class ScriptEngine {
      * When MCP is connected: "Minecraft 1.20.1 | 已与智能体共享"
      * Like VS Code's title bar when remote connections are active.
      */
-    private void updateWindowTitle() {
-        try {
-            Minecraft mc = Minecraft.getInstance();
-            if (mc.getWindow() == null) return;
-
-            // Read current title via reflection (Window has no public getter)
-            String baseTitle = "Minecraft";
-            try {
-                java.lang.reflect.Field titleField = mc.getWindow().getClass().getDeclaredField("title");
-                titleField.setAccessible(true);
-                String currentTitle = (String) titleField.get(mc.getWindow());
-                if (currentTitle != null && !currentTitle.isEmpty()) baseTitle = currentTitle;
-            } catch (Exception ignored) {}
-
-            String scriptSuffix = net.minecraft.client.resources.language.I18n.get("pendulum.title.script_running");
-            String mcpSuffix = net.minecraft.client.resources.language.I18n.get("pendulum.title.mcp_shared");
-
-            // Strip existing Pendulum suffix
-            if (baseTitle.contains(" | " + scriptSuffix)) {
-                baseTitle = baseTitle.replace(" | " + scriptSuffix, "");
-            }
-            if (baseTitle.contains(" | " + mcpSuffix)) {
-                baseTitle = baseTitle.replace(" | " + mcpSuffix, "");
-            }
-
-            // Append new suffix based on priority (MCP > script running)
-            if (this.mcpConnected) {
-                mc.getWindow().setTitle(baseTitle + " | " + mcpSuffix);
-            } else if (this.running) {
-                mc.getWindow().setTitle(baseTitle + " | " + scriptSuffix);
-            } else {
-                mc.getWindow().setTitle(baseTitle);
-            }
-        } catch (Exception e) {
-            // Title update is cosmetic — never crash the tick
-        }
+    public void updateWindowTitle(StringBuilder sb) {
+        // Append new suffix based on priority (MCP > script running)
+        if (this.mcpConnected) sb.append(" | ").append(I18n.get("pendulum.title.mcp_shared"));
+        else if (this.running) sb.append(" | ").append(I18n.get("pendulum.title.script_running"));
     }
 
     private void applyBlockBreaking() {
@@ -363,7 +332,7 @@ public final class ScriptEngine {
         this.currentFuture = this.scriptThread.submit(() -> {
             //? if >=1.21 {
             /*Context cx = new dev.latvian.mods.rhino.ContextFactory().enter();
-            *///?} else {
+             *///?} else {
             Context cx = Context.enter();
             //?}
             try {
@@ -418,7 +387,7 @@ public final class ScriptEngine {
         this.currentFuture = this.scriptThread.submit(() -> {
             //? if >=1.21 {
             /*Context cx = new dev.latvian.mods.rhino.ContextFactory().enter();
-            *///?} else {
+             *///?} else {
             Context cx = Context.enter();
             //?}
             try {

@@ -19,6 +19,10 @@ repositories {
 }
 
 dependencies {
+//    annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
+//    modImplementation("io.github.llamalad7:mixinextras-common:0.2.0")?.let { annotationProcessor(it) }
+//    modImplementation("io.github.llamalad7:mixinextras-forge:0.2.0")?.let { jarJar(it) }
+
     modImplementation("maven.modrinth:rhino:${property("deps.rhino")}")
 
     modImplementation("maven.modrinth:jupiter:${property("deps.jupiter")}")
@@ -56,6 +60,11 @@ legacyForge {
     sourceSets["main"].resources.srcDir("src/main/generated")
 }
 
+//mixin {
+//    add(sourceSets.main.get(), "${property("mod.id")}-refmap.json")
+//    config("${property("mod.id")}.mixins.json")
+//}
+
 tasks {
     processResources {
         exclude("**/fabric.mod.json", "**/neoforge.mods.toml", "**/*.accesswidener")
@@ -73,6 +82,7 @@ tasks {
     }
 
     jar {
+//        manifest.attributes["MixinConfigs"] = "${project.property("mod.id")}.mixins.json"
         finalizedBy("reobfJar")
     }
 }
@@ -90,10 +100,10 @@ java {
 val supportedMinecraftVersions: List<String> = com.google.common.collect.ImmutableList.builder<String>()
     .addAll(
         (property("publish.additionalVersions") as String?)
-        ?.split(",")
-        ?.map { it.trim() }
-        ?.filter { it.isNotEmpty() }
-        ?: emptyList())
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            ?: emptyList())
     .add(stonecutter.current.version)
     .build()
 

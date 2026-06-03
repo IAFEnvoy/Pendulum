@@ -11,14 +11,28 @@ logoFile = "${mod_logo}"
 authors = "${mod_authors}"
 description = '''${mod_description}'''
 
-[[dependencies.${ mod_id }]]
+[[dependencies.${mod_id}]]
 modId = "forge"
 mandatory = true
 versionRange = "[1,)"
 ordering = "NONE"
 side = "BOTH"
 
-[[dependencies.${ mod_id }]]
+[[dependencies.${mod_id}]]
 modId = "minecraft"
 mandatory = true
 versionRange = "${minecraft_version_range_forge}"
+
+[[dependencies.${mod_id}]]
+modId = "jupiter"
+mandatory = true
+versionRange = "[0,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.${mod_id}]]
+modId = "rhino"
+mandatory = true
+versionRange = "[0,)"
+ordering = "NONE"
+side = "BOTH"
