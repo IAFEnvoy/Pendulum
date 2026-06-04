@@ -43,6 +43,7 @@ public final class ScriptEngine {
     private volatile String currentSource;
     private volatile Future<?> currentFuture;
     private volatile boolean mcpConnected;
+    volatile StringBuilder mcpLogCapture; // captures pendulum.log/warn/error for MCP eval return
 
     private ScriptEngine() {
     }
@@ -134,6 +135,13 @@ public final class ScriptEngine {
             ScriptableObject consoleObj = (ScriptableObject) cx.newObject(this.scope);
             consoleObj.defineFunctionProperties(cx, new String[]{"log"}, MinecraftAPI.class, ScriptableObject.DONTENUM);
             ScriptableObject.putProperty(this.scope, "console", consoleObj, cx);
+
+            // pendulum.* — config & logging, captured to MCP return (see PendulumAPI.java)
+            ScriptableObject pendulumObj = (ScriptableObject) cx.newObject(this.scope);
+            pendulumObj.defineFunctionProperties(cx,
+                    new String[]{"log", "warn", "error", "isModLoaded", "getPermission"},
+                    PendulumAPI.class, ScriptableObject.DONTENUM);
+            ScriptableObject.putProperty(this.scope, "pendulum", pendulumObj, cx);
             this.initialized = true;
             LOGGER.info("Pendulum ScriptEngine initialized.");
         } catch (Exception e) {
@@ -177,22 +185,19 @@ public final class ScriptEngine {
     }
 
     /**
-     * Called from JS thread: wait for block breaking to complete
+     * Called from JS thread: wait for block at {@code target} to become air.
      */
-    static boolean waitForBreak() {
+    static boolean waitForBreak(BlockPos target) {
         int timeoutTicks = PendulumConfig.INSTANCE.breakTimeout.getValue();
         long deadline = System.currentTimeMillis() + ((long) timeoutTicks * PendulumConfig.INSTANCE.tickIntervalMs.getValue());
         while (System.currentTimeMillis() < deadline) {
-            boolean[] done = {false};
-            submitToGameThread(() -> {
+            Boolean broken = submitToGameThread(() -> {
                 Minecraft mc = Minecraft.getInstance();
-                PlayerSimulator sim = PlayerSimulator.getInstance();
-                BlockPos pos = sim.getBreakingPos();
-                if (mc.level != null && pos != null && mc.level.getBlockState(pos).isAir()) {
-                    done[0] = true;
-                }
+                if (mc.level != null && mc.level.getBlockState(target).isAir())
+                    return true;
+                return null;
             });
-            if (done[0]) return true;
+            if (Boolean.TRUE.equals(broken)) return true;
             singleTickSleep();
         }
         return false;
@@ -373,8 +378,13 @@ public final class ScriptEngine {
         return this.running;
     }
 
+    public String getStatus() {
+        return this.running ? "pendulum.status.running" : "pendulum.status.idle";
+    }
+
     /**
      * MCP-specific: execute code and return JS expression value (instead of "Done.").
+     * console.log() output is captured and appended to the result.
      */
     public void execWithCallback(String code, CompletableFuture<String> resultFuture) {
         if (!this.initialized) this.initialize();
@@ -384,6 +394,9 @@ public final class ScriptEngine {
         }
         this.running = true;
         this.currentSource = "<mcp>";
+        // Capture console.log output
+        final StringBuilder logOutput = new StringBuilder();
+        this.mcpLogCapture = logOutput;
         this.currentFuture = this.scriptThread.submit(() -> {
             //? if >=1.21 {
             /*Context cx = new dev.latvian.mods.rhino.ContextFactory().enter();
@@ -395,6 +408,16 @@ public final class ScriptEngine {
                 String output = cx.toString(result);
                 this.running = false;
                 this.currentSource = null;
+                this.mcpLogCapture = null;
+                if (logOutput.length() > 0) {
+                    String logStr = logOutput.toString();
+                    if ("undefined".equals(output) || output == null) {
+                        output = logStr;
+                    } else {
+                        output = logStr + "\n" + output;
+                    }
+                }
+                this.lastEvalResult = output;
                 resultFuture.complete(output);
             } catch (RhinoException e) {
                 if (PendulumConfig.INSTANCE.logJsErrors.getValue()) {
@@ -402,21 +425,22 @@ public final class ScriptEngine {
                 }
                 this.running = false;
                 this.currentSource = null;
+                this.mcpLogCapture = null;
+                this.lastEvalResult = "Error: " + e.getMessage();
                 resultFuture.complete("Error: " + e.getMessage());
             } catch (Throwable t) {
                 LOGGER.error("Unexpected error in script", t);
                 this.running = false;
                 this.currentSource = null;
+                this.mcpLogCapture = null;
+                this.lastEvalResult = "Error: " + t.getMessage();
                 resultFuture.complete("Error: " + t.getMessage());
             }
         });
     }
 
-    public String getStatus() {
-        if (!this.running) return "pendulum.status.idle";
-        return "pendulum.status.running";
-    }
-
+    /** Result of the last eval (sync or async). Used by MCP status tool. */
+    public volatile String lastEvalResult;
     public Path getScriptDir() {
         return SCRIPT_DIR.toAbsolutePath();
     }

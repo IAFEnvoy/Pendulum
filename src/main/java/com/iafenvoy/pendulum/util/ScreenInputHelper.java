@@ -181,10 +181,9 @@ public final class ScreenInputHelper {
     // ==================== Keyboard ====================
 
     /**
-     * Inject a keyboard key press/release.
-     *
-     * @param keyName e.g. "key.keyboard.w", "key.keyboard.enter", "A", "ESC"
-     * @param action  1=press, 0=release
+     * Inject a keyboard key via Minecraft's keyboard handler + Win32 PostMessage fallback.
+     * NO AWT Robot — prevents keystroke leakage to other applications.
+     * Forces Minecraft window focus before injection.
      */
     public static void injectKey(String keyName, int action) {
         int glfwKey = parseKeyName(keyName);
@@ -196,34 +195,55 @@ public final class ScreenInputHelper {
         Minecraft mc = Minecraft.getInstance();
         long handle = mc.getWindow().getWindow();
 
-        // Try GLFW direct injection
+        // Force window focus first
         if (handle != 0) {
             try {
-                Object kbHandler = getKeyboardHandler(mc);
-                if (kbHandler != null) {
-                    Method keyPress = findKeyPressMethod(kbHandler.getClass());
-                    if (keyPress != null) {
-                        keyPress.setAccessible(true);
-                        keyPress.invoke(kbHandler, handle, glfwKey, 0, action, 0);
+                Class<?> glfw = Class.forName("org.lwjgl.glfw.GLFW");
+                glfw.getMethod("glfwFocusWindow", long.class).invoke(null, handle);
+                try { Thread.sleep(30); } catch (InterruptedException ignored) {}
+            } catch (Exception ignored) {}
+        }
+
+        // Method 1: MC keyboardHandler.keyPress (preferred)
+        if (handle != 0) {
+            try {
+                Object kb = getKeyboardHandler(mc);
+                if (kb != null) {
+                    Method m = findKeyPressMethod(kb.getClass());
+                    if (m != null) {
+                        m.setAccessible(true);
+                        m.invoke(kb, handle, glfwKey, 0, action, 0);
                         return;
                     }
                 }
-            } catch (Exception e) {
-                LOGGER.debug("[Pendulum] GLFW key inject failed: {}", e.getMessage());
-            }
+            } catch (Exception ignored) {}
         }
 
-        // AWT Robot fallback
-        Robot r = awtRobot;
-        if (r == null) return;
-        int vk = glfwToAwtKey(glfwKey);
-        if (vk < 0) return;
-        try {
-            if (action == 1) r.keyPress(vk);
-            else r.keyRelease(vk);
-        } catch (Exception e) {
-            LOGGER.error("[Pendulum] AWT key inject failed", e);
+        // Method 2: Win32 PostMessage (sends WM_KEYDOWN/UP to MC window only)
+        if (handle != 0) {
+            try {
+                int vk = glfwToWin32Vk(glfwKey);
+                if (vk > 0) {
+                    Class<?> user32 = Class.forName("com.sun.jna.platform.win32.User32");
+                    Object instance = user32.getField("INSTANCE").get(null);
+                    user32.getMethod("PostMessageW", long.class, int.class, long.class, long.class)
+                            .invoke(instance, handle, action == 1 ? 0x0100 : 0x0101, (long) vk, 0L);
+                    return;
+                }
+            } catch (Exception ignored) {}
         }
+
+        LOGGER.warn("[Pendulum] Keyboard injection failed for key: {}", keyName);
+    }
+
+    private static int glfwToWin32Vk(int k) {
+        if (k >= 65 && k <= 90) return k;
+        if (k >= 48 && k <= 57) return k;
+        switch (k) { case 256: return 0x1B; case 257: return 0x0D; case 258: return 0x09;
+            case 259: return 0x08; case 261: return 0x2E; case 262: return 0x27;
+            case 263: return 0x25; case 264: return 0x28; case 265: return 0x26;
+            case 32: return 0x20; case 340: case 344: return 0x10; case 341: case 345: return 0x11;
+            case 342: case 346: return 0x12; default: return -1; }
     }
 
     /**
@@ -232,81 +252,62 @@ public final class ScreenInputHelper {
     public static void pressKey(String keyName, float holdSeconds) {
         injectKey(keyName, 1);
         if (holdSeconds > 0) {
-            try {
-                Thread.sleep((long) (holdSeconds * 1000));
-            } catch (InterruptedException ignored) {
-            }
+            try { Thread.sleep((long) (holdSeconds * 1000)); } catch (InterruptedException ignored) {}
         }
         injectKey(keyName, 0);
     }
 
-    /**
-     * Type a string character by character.
-     */
+    /** Type text via keyboard injection (no AWT Robot). */
     public static void typeText(String text) {
-        for (char c : text.toCharArray()) {
-            typeChar(c);
-        }
+        for (char c : text.toCharArray()) typeChar(c);
     }
 
     private static void typeChar(char c) {
-        Robot r = awtRobot;
-        if (r == null) return;
-
-        // Use AWT Robot for typing (handles Shift automatically)
-        if (Character.isUpperCase(c)) {
-            r.keyPress(KeyEvent.VK_SHIFT);
-            r.keyPress(Character.toUpperCase(c));
-            r.keyRelease(Character.toUpperCase(c));
-            r.keyRelease(KeyEvent.VK_SHIFT);
-        } else {
-            // Map special characters
-            int vk = charToAwtKey(c);
-            if (vk >= 0) {
-                if (Character.isUpperCase(c) || needsShift(c)) {
-                    r.keyPress(KeyEvent.VK_SHIFT);
-                    r.keyPress(vk);
-                    r.keyRelease(vk);
-                    r.keyRelease(KeyEvent.VK_SHIFT);
-                } else {
-                    r.keyPress(vk);
-                    r.keyRelease(vk);
-                }
-            }
+        // Map char to GLFW key code, inject press+release
+        int glfwKey = charToGlfwKey(c);
+        if (glfwKey > 0) {
+            boolean shift = Character.isUpperCase(c) || "!@#$%^&*()_+{}|:\"<>?~".indexOf(c) >= 0;
+            if (shift) injectKey("LEFT_SHIFT", 1);
+            injectKeyRaw(glfwKey, 1);
+            try { Thread.sleep(10); } catch (InterruptedException ignored) {}
+            injectKeyRaw(glfwKey, 0);
+            if (shift) injectKey("LEFT_SHIFT", 0);
+            try { Thread.sleep(10); } catch (InterruptedException ignored) {}
         }
     }
 
-    // ==================== Reflection helpers ====================
+    private static void injectKeyRaw(int glfwKey, int action) {
+        Minecraft mc = Minecraft.getInstance();
+        long handle = mc.getWindow().getWindow();
+        if (handle != 0) {
+            try {
+                Object kb = getKeyboardHandler(mc);
+                if (kb != null) {
+                    Method m = findKeyPressMethod(kb.getClass());
+                    if (m != null) { m.setAccessible(true); m.invoke(kb, handle, glfwKey, 0, action, 0); }
+                }
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private static int charToGlfwKey(char c) {
+        if (c >= 'a' && c <= 'z') return (c - 'a') + 65;
+        if (c >= 'A' && c <= 'Z') return (c - 'A') + 65;
+        if (c >= '0' && c <= '9') return (c - '0') + 48;
+        switch (c) { case ' ': return 32; case '-': return 45; case '=': return 61;
+            case '[': return 91; case ']': return 93; case '\\': return 92;
+            case ';': return 59; case '\'': return 39; case ',': return 44;
+            case '.': return 46; case '/': return 47; default: return -1; }
+    }
+
+    // ==================== Direct access (Mojang mappings: mouseHandler/keyboardHandler are public) ====================
 
     private static Object getMouseHandler(Minecraft mc) {
-        try {
-            Field f = mc.getClass().getDeclaredField("mouseHandler");
-            f.setAccessible(true);
-            return f.get(mc);
-        } catch (Exception ignored) {
-        }
-        // Try getter method
-        try {
-            Method m = mc.getClass().getMethod("mouseHandler");
-            return m.invoke(mc);
-        } catch (Exception ignored) {
-        }
-        return null;
+        return mc.mouseHandler;
     }
 
     private static Object getKeyboardHandler(Minecraft mc) {
-        try {
-            Field f = mc.getClass().getDeclaredField("keyboardHandler");
-            f.setAccessible(true);
-            return f.get(mc);
-        } catch (Exception ignored) {
-        }
-        try {
-            Method m = mc.getClass().getMethod("keyboardHandler");
-            return m.invoke(mc);
-        } catch (Exception ignored) {
-        }
-        return null;
+        return mc.keyboardHandler;
     }
 
     private static Method findMouseButtonMethod(Class<?> clazz) {

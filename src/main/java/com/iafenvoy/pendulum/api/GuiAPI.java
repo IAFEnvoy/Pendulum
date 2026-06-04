@@ -3,7 +3,9 @@ package com.iafenvoy.pendulum.api;
 import com.iafenvoy.pendulum.script.ScriptEngine;
 import com.iafenvoy.pendulum.util.ScreenInputHelper;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.components.AbstractSelectionList;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
@@ -12,7 +14,6 @@ import dev.latvian.mods.rhino.Function;
 import dev.latvian.mods.rhino.NativeArray;
 import dev.latvian.mods.rhino.Scriptable;
 
-import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.List;
 
@@ -53,8 +54,7 @@ public final class GuiAPI {
     public static String getTitle(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         return ScriptEngine.submitToGameThread(() -> {
             if (MC.screen == null) return "";
-            Component title = MC.screen.getTitle();
-            return title != null ? title.getString() : "";
+            return MC.screen.getTitle().getString();
         });
     }
 
@@ -64,17 +64,7 @@ public final class GuiAPI {
 
     public static void openChat(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         ScriptEngine.submitToGameThread(() -> {
-            try {
-                Class<?> chatScreenClass = Class.forName("net.minecraft.client.gui.screens.ChatScreen");
-                Object chatScreen = chatScreenClass.getConstructor(String.class).newInstance("");
-                for (java.lang.reflect.Method m : MC.getClass().getMethods()) {
-                    if (m.getName().equals("setScreen") && m.getParameterCount() == 1) {
-                        m.invoke(MC, chatScreen);
-                        return;
-                    }
-                }
-            } catch (Exception ignored) {
-            }
+            MC.setScreen(new ChatScreen(""));
         });
     }
 
@@ -101,62 +91,30 @@ public final class GuiAPI {
      */
     static Scriptable buildWidgetObject(Context cx, Scriptable scope, Object widget, boolean recurse) {
         Scriptable obj = cx.newObject(scope);
-        Class<?> clazz = widget.getClass();
-        obj.put(cx, "type", obj, clazz.getSimpleName());
+        obj.put(cx, "type", obj, widget.getClass().getSimpleName());
 
-        // Position & size via reflection
-        try {
-            Field xF = findField(clazz, "x", "getX", "field_22786");
-            Field yF = findField(clazz, "y", "getY", "field_22787");
-            Field wF = findField(clazz, "width", "getWidth", "field_22788");
-            Field hF = findField(clazz, "height", "getHeight", "field_22789");
-            if (xF != null) obj.put(cx, "x", obj, ((Number) xF.get(widget)).intValue());
-            if (yF != null) obj.put(cx, "y", obj, ((Number) yF.get(widget)).intValue());
-            if (wF != null) obj.put(cx, "width", obj, ((Number) wF.get(widget)).intValue());
-            if (hF != null) obj.put(cx, "height", obj, ((Number) hF.get(widget)).intValue());
-        } catch (Exception ignored) {
+        // Position, size, text, state — all via AbstractWidget public getters (no reflection)
+        if (widget instanceof AbstractWidget w) {
+            obj.put(cx, "x", obj, w.getX());
+            obj.put(cx, "y", obj, w.getY());
+            obj.put(cx, "width", obj, w.getWidth());
+            obj.put(cx, "height", obj, w.getHeight());
+            Component msg = w.getMessage();
+            if (msg != null) obj.put(cx, "text", obj, msg.getString());
+            obj.put(cx, "active", obj, w.active);
+            obj.put(cx, "focused", obj, w.isFocused());
         }
 
-        // Text label
-        try {
-            Field msgF = findField(clazz, "message", "getMessage", "field_22791");
-            if (msgF != null) {
-                Object msg = msgF.get(widget);
-                obj.put(cx, "text", obj, msg instanceof Component c ? c.getString() : msg.toString());
-            }
-        } catch (Exception ignored) {
-        }
-
-        // Enabled state
-        try {
-            Field activeF = findField(clazz, "active", "isActive", "field_22792");
-            if (activeF != null) obj.put(cx, "active", obj, activeF.getBoolean(widget));
-        } catch (Exception ignored) {
-        }
-
-        // Focused state
-        try {
-            Field focusedF = findField(clazz, "isFocused", "focused", "field_22801");
-            if (focusedF != null) obj.put(cx, "focused", obj, focusedF.getBoolean(widget));
-        } catch (Exception ignored) {
-        }
-
-        // Recurse into children (e.g. containers, panels)
+        // Recurse into children (e.g. list widgets, containers)
         if (recurse) {
-            try {
-                Field childrenField = findField(clazz, "children", "renderables", "widgets");
-                if (childrenField != null) {
-                    Object children = childrenField.get(widget);
-                    if (children instanceof List<?> list) {
-                        NativeArray childArr = (NativeArray) cx.newArray(scope, 0);
-                        for (Object child : list) {
-                            Scriptable childObj = buildWidgetObject(cx, scope, child, true);
-                            if (childObj != null) childArr.put(cx, childArr.size(), childArr, childObj);
-                        }
-                        if (childArr.size() > 0) obj.put(cx, "children", obj, childArr);
-                    }
+            java.util.List<?> list = tryGetChildren(widget);
+            if (list != null) {
+                NativeArray childArr = (NativeArray) cx.newArray(scope, 0);
+                for (Object child : list) {
+                    Scriptable childObj = buildWidgetObject(cx, scope, child, true);
+                    if (childObj != null) childArr.put(cx, childArr.size(), childArr, childObj);
                 }
-            } catch (Exception ignored) {
+                if (childArr.size() > 0) obj.put(cx, "children", obj, childArr);
             }
         }
 
@@ -194,54 +152,31 @@ public final class GuiAPI {
             Object found = findWidgetByText(MC.screen.children(), target);
             if (found == null) return "{\"error\":\"widget not found: " + target + "\"}";
 
-            try {
-                Field xF = findField(found.getClass(), "x", "getX");
-                Field yF = findField(found.getClass(), "y", "getY");
-                Field wF = findField(found.getClass(), "width", "getWidth");
-                Field hF = findField(found.getClass(), "height", "getHeight");
-                int wx = xF != null ? ((Number) xF.get(found)).intValue() : 0;
-                int wy = yF != null ? ((Number) yF.get(found)).intValue() : 0;
-                int ww = wF != null ? ((Number) wF.get(found)).intValue() : 0;
-                int wh = hF != null ? ((Number) hF.get(found)).intValue() : 0;
-                int cx2 = wx + ww / 2;
-                int cy2 = wy + wh / 2;
+            if (found instanceof AbstractWidget w) {
+                int cx2 = w.getX() + w.getWidth() / 2;
+                int cy2 = w.getY() + w.getHeight() / 2;
                 new Thread(() -> ScreenInputHelper.clickAt(cx2, cy2, 0)).start();
-                return "{\"clicked\":true,\"widget\":\"" + found.getClass().getSimpleName() + "\",\"x\":" + cx2 + ",\"y\":" + cy2 + "}";
-            } catch (Exception e) {
-                return "{\"error\":\"" + e.getMessage() + "\"}";
+                return "{\"clicked\":true,\"widget\":\"" + w.getClass().getSimpleName() + "\",\"x\":" + cx2 + ",\"y\":" + cy2 + "}";
             }
+            return "{\"error\":\"widget has no position\"}";
         });
     }
 
-    private static Object findWidgetByText(List<? extends GuiEventListener> children, String target) {
+    private static Object findWidgetByText(java.util.List<?> children, String target) {
         String lower = target.toLowerCase();
         for (Object child : children) {
-            Class<?> clazz = child.getClass();
-            // Check text
-            try {
-                Field msgF = findField(clazz, "message", "getMessage", "field_22791");
-                if (msgF != null) {
-                    Object msg = msgF.get(child);
-                    String text = msg instanceof Component c ? c.getString().toLowerCase() : msg.toString().toLowerCase();
-                    if (text.contains(lower)) return child;
-                }
-            } catch (Exception ignored) {
+            // Check text via AbstractWidget.getMessage()
+            if (child instanceof AbstractWidget w) {
+                Component msg = w.getMessage();
+                if (msg != null && msg.getString().toLowerCase().contains(lower)) return child;
             }
             // Check type name
-            if (clazz.getSimpleName().toLowerCase().contains(lower)) return child;
+            if (child.getClass().getSimpleName().toLowerCase().contains(lower)) return child;
             // Recurse into children
-            try {
-                Field childrenF = findField(clazz, "children", "renderables");
-                if (childrenF != null) {
-                    Object subChildren = childrenF.get(child);
-                    if (subChildren instanceof List) {
-                        @SuppressWarnings("unchecked")
-                        List<GuiEventListener> list = (List<GuiEventListener>) subChildren;
-                        Object found = findWidgetByText(list, target);
-                        if (found != null) return found;
-                    }
-                }
-            } catch (Exception ignored) {
+            java.util.List<?> sub = tryGetChildren(child);
+            if (sub != null) {
+                Object found = findWidgetByText(sub, target);
+                if (found != null) return found;
             }
         }
         return null;
@@ -519,51 +454,29 @@ public final class GuiAPI {
 
     private static String selectListItemRecursive(java.util.List<?> children, String target) {
         for (Object child : children) {
-            Class<?> clazz = child.getClass();
-            String cn = clazz.getSimpleName().toLowerCase();
+            String cn = child.getClass().getSimpleName().toLowerCase();
             if (cn.contains("list") || cn.contains("selectionlist") || cn.contains("entrylist") || cn.contains("choices")) {
-                try {
-                    Field childrenF = findField(clazz, "children", "entries", "items", "listEntries");
-                    if (childrenF != null) {
-                        Object entries = childrenF.get(child);
-                        if (entries instanceof java.util.List<?> entryList) {
-                            for (Object entry : entryList) {
-                                try {
-                                    Field msgF = findField(entry.getClass(), "message", "getMessage", "name", "getName");
-                                    if (msgF != null) {
-                                        Object msg = msgF.get(entry);
-                                        String entryText = msg instanceof net.minecraft.network.chat.Component c ? c.getString() : msg.toString();
-                                        if (entryText.toLowerCase().contains(target)) {
-                                            Field xF = findField(entry.getClass(), "x", "getX");
-                                            Field yF = findField(entry.getClass(), "y", "getY");
-                                            Field wF = findField(entry.getClass(), "width", "getWidth");
-                                            Field hF = findField(entry.getClass(), "height", "getHeight");
-                                            int ex = xF != null ? ((Number) xF.get(entry)).intValue() : 0;
-                                            int ey = yF != null ? ((Number) yF.get(entry)).intValue() : 0;
-                                            int ew = wF != null ? ((Number) wF.get(entry)).intValue() : 0;
-                                            int eh = hF != null ? ((Number) hF.get(entry)).intValue() : 0;
-                                            new Thread(() -> ScreenInputHelper.clickAt(ex + ew / 2, ey + eh / 2, 0)).start();
-                                            return "{\"selected\":true,\"text\":\"" + entryText.replace("\\", "\\\\").replace("\"", "\\\"") + "\",\"x\":" + (ex + ew / 2) + ",\"y\":" + (ey + eh / 2) + "}";
-                                        }
-                                    }
-                                } catch (Exception ignored) {}
+                java.util.List<?> entries = tryGetChildren(child);
+                if (entries != null) {
+                    for (Object entry : entries) {
+                        if (entry instanceof AbstractWidget ew) {
+                            Component msg = ew.getMessage();
+                            String entryText = msg != null ? msg.getString() : "";
+                            if (entryText.toLowerCase().contains(target)) {
+                                int cx = ew.getX() + ew.getWidth() / 2;
+                                int cy = ew.getY() + ew.getHeight() / 2;
+                                new Thread(() -> ScreenInputHelper.clickAt(cx, cy, 0)).start();
+                                return "{\"selected\":true,\"text\":\"" + entryText.replace("\\", "\\\\").replace("\"", "\\\"") + "\",\"x\":" + cx + ",\"y\":" + cy + "}";
                             }
                         }
                     }
-                } catch (Exception ignored) {}
-            }
-            try {
-                Field childrenF = findField(clazz, "children", "renderables", "widgets");
-                if (childrenF != null) {
-                    Object subChildren = childrenF.get(child);
-                    if (subChildren instanceof java.util.List) {
-                        @SuppressWarnings("unchecked")
-                        java.util.List<Object> list = (java.util.List<Object>) subChildren;
-                        String result = selectListItemRecursive(list, target);
-                        if (result != null && result.contains("\"selected\":true")) return result;
-                    }
                 }
-            } catch (Exception ignored) {}
+            }
+            java.util.List<?> sub = tryGetChildren(child);
+            if (sub != null) {
+                String result = selectListItemRecursive(sub, target);
+                if (result != null && result.contains("\"selected\":true")) return result;
+            }
         }
         return "{\"error\":\"list item not found: " + target + "\"}";
     }
@@ -582,16 +495,14 @@ public final class GuiAPI {
         return obj;
     }
 
-    static Field findField(Class<?> clazz, String... candidates) {
-        for (String name : candidates) {
-            try {
-                Field f = clazz.getDeclaredField(name);
-                f.setAccessible(true);
-                return f;
-            } catch (NoSuchFieldException ignored) {
-            }
+    /**
+     * Try to get children from a widget via public API only (no reflection).
+     * Covers AbstractSelectionList (list widgets). Returns null if no children accessible.
+     */
+    public static List<?> tryGetChildren(Object widget) {
+        if (widget instanceof AbstractSelectionList<?> list) {
+            return list.children();
         }
-        if (clazz.getSuperclass() != null) return findField(clazz.getSuperclass(), candidates);
         return null;
     }
 }

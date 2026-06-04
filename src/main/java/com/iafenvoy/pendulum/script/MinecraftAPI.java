@@ -4,6 +4,7 @@ import com.iafenvoy.pendulum.config.PendulumConfig;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.BlockPos;
@@ -321,6 +322,18 @@ public final class MinecraftAPI {
         int y = ((Number) args[1]).intValue();
         int z = ((Number) args[2]).intValue();
         final BlockPos pos = new BlockPos(x, y, z);
+
+        // Check line-of-sight to the target block (prevents breaking through walls)
+        Boolean canSee = ScriptEngine.submitToGameThread(() -> {
+            if (MC.level == null || MC.player == null) return false;
+            Vec3 start = MC.player.getEyePosition();
+            Vec3 end = new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+            ClipContext ctx = new ClipContext(start, end, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, MC.player);
+            BlockHitResult bhr = MC.level.clip(ctx);
+            return bhr.getType() != HitResult.Type.MISS && bhr.getBlockPos().equals(pos);
+        });
+        if (Boolean.FALSE.equals(canSee)) return false;
+
         net.minecraft.core.Direction[] dirHolder = new net.minecraft.core.Direction[1];
         ScriptEngine.submitToGameThread(() -> {
             if (MC.player == null) return;
@@ -347,7 +360,7 @@ public final class MinecraftAPI {
             PlayerSimulator.getInstance().setBreaking(pos, dir);
             MC.gameMode.startDestroyBlock(pos, dir);
         });
-        return ScriptEngine.waitForBreak();
+        return ScriptEngine.waitForBreak(pos);
     }
 
     public static void swapHands(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
@@ -394,29 +407,48 @@ public final class MinecraftAPI {
     }
 
     /**
-     * placeBlockAt(x, y, z, slot?) - place block at exact coords (no raytrace).
-     * Auto-calculates nearest adjacent face. Sync wait 3 ticks. Returns success.
-     * Tip: use baritone (br object) when possible for better reliability.
+     * placeBlockAt(x, y, z, slot?) - place block at exact coords.
+     * Returns a result object: {success: boolean, reason?: string}
      */
-    public static boolean placeBlockAt(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-        if (!PendulumConfig.INSTANCE.allowPlace.getValue()) return false;
-        if (MC.player == null || MC.gameMode == null || MC.level == null) return false;
+    public static Scriptable placeBlockAt(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
+        Scriptable result = cx.newObject(thisObj);
+        if (!PendulumConfig.INSTANCE.allowPlace.getValue()) {
+            result.put(cx, "success", result, false);
+            result.put(cx, "reason", result, "Place permission denied");
+            return result;
+        }
+        if (MC.player == null || MC.gameMode == null || MC.level == null) {
+            result.put(cx, "success", result, false);
+            result.put(cx, "reason", result, "Player or world not available");
+            return result;
+        }
         int x = ((Number) args[0]).intValue();
         int y = ((Number) args[1]).intValue();
         int z = ((Number) args[2]).intValue();
         int slot = args.length > 3 ? ((Number) args[3]).intValue() - 1 : -1;
         final BlockPos placePos = new BlockPos(x, y, z);
 
-        // Check target is air
         boolean[] canPlace = {false};
+        String[] failReason = {""};
         net.minecraft.core.Direction[] bestFace = new net.minecraft.core.Direction[1];
         BlockPos[] bestNeighbor = new BlockPos[1];
 
         ScriptEngine.submitToGameThread(() -> {
-            if (!MC.level.getBlockState(placePos).isAir()) return;
-            // Select slot if specified
+            if (!MC.level.getBlockState(placePos).isAir()) {
+                failReason[0] = "Target block is not air";
+                return;
+            }
+            if (MC.player == null) { failReason[0] = "Player is null"; return; }
+            //? if >=1.21 {
+            /*double reach = MC.player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.BLOCK_INTERACTION_RANGE) + 1.0;
+            *///?} else {
+            double reach = MC.gameMode.getPickRange() + 1.0;
+            //?}
+            if (MC.player.getEyePosition().distanceTo(new Vec3(x+0.5, y+0.5, z+0.5)) > reach) {
+                failReason[0] = "Out of reach";
+                return;
+            }
             if (slot >= 0 && slot < 9) MC.player.getInventory().selected = slot;
-            // Find the best adjacent face to click
             Vec3 eye = MC.player.getEyePosition();
             double bestDist = Double.MAX_VALUE;
             for (net.minecraft.core.Direction d : net.minecraft.core.Direction.values()) {
@@ -426,30 +458,30 @@ public final class MinecraftAPI {
                 double cy2 = neighbor.getY() + 0.5 + d.getStepY() * 0.5;
                 double cz2 = neighbor.getZ() + 0.5 + d.getStepZ() * 0.5;
                 double dist = eye.distanceToSqr(cx2, cy2, cz2);
-                if (dist < bestDist) {
-                    bestDist = dist;
-                    bestFace[0] = d;
-                    bestNeighbor[0] = neighbor;
-                }
+                if (dist < bestDist) { bestDist = dist; bestFace[0] = d; bestNeighbor[0] = neighbor; }
             }
-            if (bestFace[0] != null) canPlace[0] = true;
+            if (bestFace[0] == null) { failReason[0] = "No adjacent solid face found"; return; }
+            canPlace[0] = true;
         });
 
-        if (!canPlace[0] || bestFace[0] == null || bestNeighbor[0] == null) return false;
+        if (!canPlace[0]) {
+            result.put(cx, "success", result, false);
+            result.put(cx, "reason", result, failReason[0].isEmpty() ? "Cannot place" : failReason[0]);
+            return result;
+        }
 
+        final net.minecraft.core.Direction face = bestFace[0];
+        final BlockPos neighbor = bestNeighbor[0];
         ScriptEngine.submitToGameThread(() -> {
-            net.minecraft.core.Direction face = bestFace[0];
-            BlockPos neighbor = bestNeighbor[0];
-            Vec3 hitVec = new Vec3(
-                    neighbor.getX() + 0.5 + face.getStepX() * 0.5,
-                    neighbor.getY() + 0.5 + face.getStepY() * 0.5,
-                    neighbor.getZ() + 0.5 + face.getStepZ() * 0.5);
-            BlockHitResult bhr = new BlockHitResult(hitVec, face, neighbor, false);
-            MC.gameMode.useItemOn(MC.player, InteractionHand.MAIN_HAND, bhr);
+            Vec3 hitVec = new Vec3(neighbor.getX()+0.5+face.getStepX()*0.5, neighbor.getY()+0.5+face.getStepY()*0.5, neighbor.getZ()+0.5+face.getStepZ()*0.5);
+            MC.gameMode.useItemOn(MC.player, InteractionHand.MAIN_HAND, new BlockHitResult(hitVec, face, neighbor, false));
         });
         ScriptEngine.waitTicks(3);
 
-        return ScriptEngine.submitToGameThread(() -> !MC.level.getBlockState(placePos).isAir());
+        boolean succeeded = ScriptEngine.submitToGameThread(() -> !MC.level.getBlockState(placePos).isAir());
+        result.put(cx, "success", result, succeeded);
+        if (!succeeded) result.put(cx, "reason", result, "Block not placed — check inventory");
+        return result;
     }
 
     /**
@@ -738,60 +770,17 @@ public final class MinecraftAPI {
 
     private static Scriptable buildGuiElementObject(Context cx, Scriptable scope, Object widget) {
         Scriptable obj = cx.newObject(scope);
-        Class<?> clazz = widget.getClass();
-        obj.put(cx, "type", obj, clazz.getSimpleName());
-        // AbstractWidget members
-        try {
-            var xField = findField(clazz, "x", "getX", "field_22786");
-            var yField = findField(clazz, "y", "getY", "field_22787");
-            var wField = findField(clazz, "width", "getWidth", "field_22788");
-            var hField = findField(clazz, "height", "getHeight", "field_22789");
-            if (xField != null) obj.put(cx, "x", obj, ((Number) xField.get(widget)).intValue());
-            if (yField != null) obj.put(cx, "y", obj, ((Number) yField.get(widget)).intValue());
-            if (wField != null) obj.put(cx, "width", obj, ((Number) wField.get(widget)).intValue());
-            if (hField != null) obj.put(cx, "height", obj, ((Number) hField.get(widget)).intValue());
-        } catch (Exception ignored) {
-        }
-        // Text
-        try {
-            var msgField = findField(clazz, "message", "getMessage", "field_22791");
-            if (msgField != null) {
-                Object msg = msgField.get(widget);
-                obj.put(cx, "text", obj, msg instanceof net.minecraft.network.chat.Component c ? c.getString() : msg.toString());
-            }
-        } catch (Exception ignored) {
-        }
-        // Id for buttons (optional)
-        try {
-            var idField = findField(clazz, "id");
-            if (idField != null) obj.put(cx, "id", obj, idField.get(widget).toString());
-        } catch (Exception ignored) {
+        obj.put(cx, "type", obj, widget.getClass().getSimpleName());
+
+        if (widget instanceof AbstractWidget w) {
+            obj.put(cx, "x", obj, w.getX());
+            obj.put(cx, "y", obj, w.getY());
+            obj.put(cx, "width", obj, w.getWidth());
+            obj.put(cx, "height", obj, w.getHeight());
+            net.minecraft.network.chat.Component msg = w.getMessage();
+            if (msg != null) obj.put(cx, "text", obj, msg.getString());
         }
         return obj;
-    }
-
-    private static java.lang.reflect.Field findField(Class<?> clazz, String... candidates) {
-        for (String name : candidates) {
-            try {
-                java.lang.reflect.Field f = clazz.getDeclaredField(name);
-                f.setAccessible(true);
-                return f;
-            } catch (NoSuchFieldException ignored) {
-            }
-        }
-        // Walk superclass
-        if (clazz.getSuperclass() != null) return findField(clazz.getSuperclass(), candidates);
-        // Try getter methods
-        for (String name : candidates) {
-            if (name.startsWith("get")) {
-                try {
-                    java.lang.reflect.Method m = clazz.getMethod(name);
-                    // Not a field lookup - would need a different approach
-                } catch (NoSuchMethodException ignored) {
-                }
-            }
-        }
-        return null;
     }
 
     /*
@@ -867,8 +856,12 @@ public final class MinecraftAPI {
         int y = ((Number) args[1]).intValue();
         int z = ((Number) args[2]).intValue();
         return ScriptEngine.submitToGameThread(() -> {
-            if (MC.level == null) return "air";
-            return BuiltInRegistries.BLOCK.getKey(MC.level.getBlockState(new BlockPos(x, y, z)).getBlock()).toString();
+            if (MC.level == null) return null;
+            BlockPos pos = new BlockPos(x, y, z);
+            // Bounds check: outside world height or beyond reasonable chunk range
+            if (MC.level.isOutsideBuildHeight(pos) || !MC.level.hasChunkAt(pos))
+                return null;
+            return BuiltInRegistries.BLOCK.getKey(MC.level.getBlockState(pos).getBlock()).toString();
         });
     }
 
@@ -1348,15 +1341,8 @@ public final class MinecraftAPI {
         });
     }
 
-    // e.g. console.log usage
-    public static void consoleLog(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < args.length; i++) {
-            if (i > 0) sb.append(" ");
-            sb.append(cx.toString(args[i]));
-        }
-        LOGGER.info("[JS] {}", sb);
-    }
+    // Pendulum config & logging is in the top-level PendulumAPI.java file
+    // (registered on the `pendulum` global in ScriptEngine)
 
     // ==================== Files/Control ====================
 

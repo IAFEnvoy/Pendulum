@@ -22,19 +22,19 @@ For detailed documentation, see the [Documentation](https://docs.iafenvoy.com/do
 
 - **`/pendulum execute`** — run JavaScript inline in chat
 - **`/pendulum file`** — run `.js` scripts from `.minecraft/pendulum/`
-- **`mc.*`** — 80+ API functions: `mc.player.forward()`, `mc.world.findBlocks()`, `mc.inv.hasItem()`, `mc.gui.click()`, and more
+- **`mc.*`** — 80+ API functions: `mc.player.forward()`, `mc.world.findBlocks()`, `mc.inv.hasItem()`, `mc.gui.click()`, and more. Log via `pendulum.log()`, `pendulum.warn()`, `pendulum.error()`.
 - **`br.*`** — 45 Baritone functions: pathfinding, mining, farming, building schematics
 
-### 🤖 For AI Agents
+### 🤖 For AI Agents 
 
 - **MCP JSON-RPC 2.0 over TCP** — native AI agent integration
-- **`pendulum_eval`** — execute arbitrary JS and return results
-- **`pendulum_screenshot`** — capture the game view
-- **`pendulum_gui_elements`** — read all visible GUI controls
-- **`pendulum_click`** / **`pendulum_click_button`** — click GUI elements
-- **`pendulum_enumerate_widgets`** — full recursive widget tree
-- **`pendulum_type_text`** / **`pendulum_press_key`** — keyboard input
-- **`pendulum_status`** / **`pendulum_abort`** — manage script state
+- **`script/eval`** — execute arbitrary JS and return results
+- **`gui/screenshot`** — capture the game view
+- **`gui/guiElements`** — read all visible GUI controls
+- **`simulate/click`** / **`gui/clickButton`** — click GUI elements
+- **`gui/enumerateWidgets`** — full recursive widget tree
+- **`simulate/typeText`** / **`simulate/pressKey`** — keyboard input
+- **`script/status`** / **`script/abort`** — manage script state
 - Compatible with VS Code Copilot, Claude Desktop, and any MCP client
 
 ## Quick Start
@@ -50,7 +50,7 @@ For detailed documentation, see the [Documentation](https://docs.iafenvoy.com/do
 /pendulum file farm.js
 
 // AI Agent workflow: screenshot + click
-pendulum_screenshot  →  pendulum_click_button("Done")  →  pendulum_type_text("Hello", true)
+gui/screenshot  →  gui/clickButton("Done")  →  simulate/typeText("Hello", true)
 ```
 
 ## MCP Server

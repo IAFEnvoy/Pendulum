@@ -10,6 +10,8 @@ import com.iafenvoy.pendulum.util.ScreenInputHelper;
 import com.mojang.logging.LogUtils;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.resources.language.I18n;
 import org.slf4j.Logger;
 
 import javax.imageio.ImageIO;
@@ -208,144 +210,122 @@ public final class McpServer {
     private String handleToolsList(Object id) {
         JsonArray tools = new JsonArray();
 
-        tools.add(makeTool("pendulum_eval",
-                "Execute JavaScript code in Minecraft using Pendulum. Key globals: mc/minecraft/game. " +
-                        "API includes: movement (forward/back/left/right/stop with tick counts), " +
-                        "block breaking (breakBlock/breakBlockAt), placement (placeBlock), world queries " +
-                        "(findBlocks/findBlocksInBox/getBlockState/rayTrace/getLookingEntity), " +
-                        "inventory (getAllItems/getItemInHand/hasItem/selectHotbar), " +
-                        "GUI via mc.gui.* (isOpen/getTitle/close/getElements/click/clickButton/pressKey/typeText/clickSlot/craft/getAllItems/moveItem), " +
-                        "player state (getPlayerHealth/getPlayerHunger/canReach/canSeeBlock/getAttackCooldown), " +
-                        "environment (getBiomeAt/getLightLevel/getDifficulty/getDimension), and " +
-                        "commands (executeCommand). All interaction functions are synchronous. " +
-                        "BARITONE: If baritone is installed (check serverInfo.meta.baritoneInstalled), " +
-                        "PREFER br.* functions: br.goto(x,y,z) instead of mc.forward loops, " +
-                        "br.mine('blockId',count) instead of mc.findBlocks+mc.breakBlockAt, " +
-                        "br.follow('entityType') to follow entities, br.stop() to cancel, " +
-                        "br.isActive() to check status, br.command('raw') for any baritone command.",
+        // ---- Core ----
+        tools.add(makeTool("script/eval",
+                I18n.get("pendulum.mcp.tool.eval"),
                 jsonSchema("object",
-                        jsonProperty("code", "string", "JS code. E.g.: mc.forward(20); " +
-                                "for(let{b} of mc.findBlocks('diamond_ore',16)) mc.breakBlockAt(b.x,b.y,b.z); " +
-                                "JSON.stringify(mc.getAllItems()) for inventory. " +
-                                "mc.rayTrace(5) to see what's ahead. " +
-                                "If baritone installed: br.goto(100,64,200); br.mine('diamond_ore',64);"))));
+                        jsonProperty("code", "string", I18n.get("pendulum.mcp.tool.eval.param.code")))));
 
-        tools.add(makeTool("pendulum_screenshot",
-                "Take a screenshot of the current Minecraft game window. Returns a base64-encoded PNG image.",
-                jsonSchema("object", jsonProperty("_", "string", "No parameters"))));
-
-        tools.add(makeTool("pendulum_gui_elements",
-                "Get the list of non-slot GUI elements currently visible on screen (buttons, labels, etc.). " +
-                        "Returns an array of objects with type, position, size, and text fields.",
-                jsonSchema("object", jsonProperty("_", "string", "No parameters"))));
-
-        tools.add(makeTool("pendulum_status",
-                "Check if a script is currently running in Pendulum.",
-                jsonSchema("object", jsonProperty("_", "string", "No parameters required"))));
-
-        tools.add(makeTool("pendulum_abort",
-                "Abort the currently running Pendulum script.",
-                jsonSchema("object", jsonProperty("_", "string", "No parameters required"))));
-
-        // ---- GUI / Screen Interaction tools ----
-
-        tools.add(makeTool("pendulum_click",
-                "Click at the specified screen coordinates. Use after pendulum_screenshot to target UI elements.\n" +
-                        "The screenshot includes a coordinate grid to help identify pixel positions.",
+        tools.add(makeTool("script/evalAsync",
+                I18n.get("pendulum.mcp.tool.eval_async"),
                 jsonSchema("object",
-                        jsonProperty("x", "integer", "X coordinate in screen pixels."),
-                        jsonProperty("y", "integer", "Y coordinate in screen pixels."),
-                        jsonProperty("button", "string", "Mouse button: \"left\" (default), \"right\", or \"middle\".", false))));
+                        jsonProperty("code", "string", I18n.get("pendulum.mcp.tool.eval_async.param.code")))));
 
-        tools.add(makeTool("pendulum_press_key",
-                "Press a keyboard key. Supports named keys like \"W\", \"Enter\", \"ESC\", \"SPACE\", \"F3\", etc.",
+        tools.add(makeTool("script/status",
+                I18n.get("pendulum.mcp.tool.status"),
+                jsonSchema("object", jsonProperty("_", "string", I18n.get("pendulum.mcp.tool.no_params")))));
+
+        tools.add(makeTool("script/abort",
+                I18n.get("pendulum.mcp.tool.abort"),
+                jsonSchema("object", jsonProperty("_", "string", I18n.get("pendulum.mcp.tool.no_params")))));
+
+        tools.add(makeTool("health",
+                I18n.get("pendulum.mcp.tool.health"),
+                jsonSchema("object", jsonProperty("_", "string", I18n.get("pendulum.mcp.tool.no_params")))));
+
+        // ---- Visual ----
+        tools.add(makeTool("gui/screenshot",
+                I18n.get("pendulum.mcp.tool.screenshot"),
                 jsonSchema("object",
-                        jsonProperty("key", "string", "Key name. E.g. \"key.keyboard.w\", \"Enter\", \"ESC\", \"SPACE\", \"F3\", \"A\"."),
-                        jsonProperty("hold_seconds", "number", "Duration to hold the key in seconds. Default 0 (press and release).", false))));
+                        jsonProperty("path", "string", I18n.get("pendulum.mcp.tool.screenshot.param.path"), false))));
 
-        tools.add(makeTool("pendulum_type_text",
-                "Type text into the currently focused text field, character by character.",
+        // ---- Simulate Input ----
+        tools.add(makeTool("simulate/click",
+                I18n.get("pendulum.mcp.tool.click"),
                 jsonSchema("object",
-                        jsonProperty("text", "string", "Text to type."),
-                        jsonProperty("press_enter", "boolean", "Whether to press Enter after typing. Default false.", false))));
+                        jsonProperty("x", "integer", I18n.get("pendulum.mcp.tool.click.param.x")),
+                        jsonProperty("y", "integer", I18n.get("pendulum.mcp.tool.click.param.y")),
+                        jsonProperty("button", "string", I18n.get("pendulum.mcp.tool.click.param.button"), false))));
 
-        tools.add(makeTool("pendulum_paste_text",
-                "Type text quickly (same as type_text but intended for larger blocks of text).",
+        // ---- GUI / Screen Interaction ----
+        tools.add(makeTool("gui/clickButton",
+                I18n.get("pendulum.mcp.tool.click_button"),
                 jsonSchema("object",
-                        jsonProperty("text", "string", "Text to paste."),
-                        jsonProperty("press_enter", "boolean", "Whether to press Enter after. Default false.", false))));
+                        jsonProperty("target", "string", I18n.get("pendulum.mcp.tool.click_button.param.target")))));
 
-        tools.add(makeTool("pendulum_scroll",
-                "Scroll the mouse wheel.",
+        tools.add(makeTool("gui/enumerateWidgets",
+                I18n.get("pendulum.mcp.tool.enumerate_widgets"),
+                jsonSchema("object", jsonProperty("_", "string", I18n.get("pendulum.mcp.tool.no_params")))));
+
+        tools.add(makeTool("gui/guiElements",
+                I18n.get("pendulum.mcp.tool.gui_elements"),
+                jsonSchema("object", jsonProperty("_", "string", I18n.get("pendulum.mcp.tool.no_params")))));
+
+        tools.add(makeTool("simulate/pressKey",
+                I18n.get("pendulum.mcp.tool.press_key"),
                 jsonSchema("object",
-                        jsonProperty("clicks", "integer", "Number of scroll clicks. Positive = up, negative = down."))));
+                        jsonProperty("key", "string", I18n.get("pendulum.mcp.tool.press_key.param.key")),
+                        jsonProperty("holdSeconds", "number", I18n.get("pendulum.mcp.tool.press_key.param.hold"), false))));
 
-        tools.add(makeTool("pendulum_hotkey",
-                "Press a key combination. E.g. \"ctrl,s\" or \"shift,f3\".",
+        tools.add(makeTool("simulate/typeText",
+                I18n.get("pendulum.mcp.tool.type_text"),
                 jsonSchema("object",
-                        jsonProperty("keys", "string", "Comma-separated key names. E.g. \"ctrl,s\", \"shift,f3\"."))));
+                        jsonProperty("text", "string", I18n.get("pendulum.mcp.tool.type_text.param.text")),
+                        jsonProperty("pressEnter", "boolean", I18n.get("pendulum.mcp.tool.type_text.param.enter"), false))));
 
-        tools.add(makeTool("pendulum_mouse_drag",
-                "Drag mouse from one point to another. Useful for moving items, selecting areas, etc.",
+        tools.add(makeTool("simulate/pasteText",
+                I18n.get("pendulum.mcp.tool.paste_text"),
                 jsonSchema("object",
-                        jsonProperty("x_start", "integer", "Start X."),
-                        jsonProperty("y_start", "integer", "Start Y."),
-                        jsonProperty("x_end", "integer", "End X."),
-                        jsonProperty("y_end", "integer", "End Y."),
-                        jsonProperty("button", "string", "Button: \"left\" (default), \"right\", \"middle\".", false))));
+                        jsonProperty("text", "string", I18n.get("pendulum.mcp.tool.paste_text.param.text")),
+                        jsonProperty("pressEnter", "boolean", I18n.get("pendulum.mcp.tool.paste_text.param.enter"), false))));
 
-        tools.add(makeTool("pendulum_screenshot_to_file",
-                "Capture a screenshot and save it to a file on disk. Returns the file path and size.",
+        tools.add(makeTool("simulate/scroll",
+                I18n.get("pendulum.mcp.tool.scroll"),
                 jsonSchema("object",
-                        jsonProperty("path", "string", "File path to save to. Defaults to pendulum/screenshots/ directory.", false))));
+                        jsonProperty("clicks", "integer", I18n.get("pendulum.mcp.tool.scroll.param.clicks")))));
 
-        tools.add(makeTool("pendulum_enumerate_widgets",
-                "Recursively enumerate ALL GUI widgets on the current screen, including nested children.\n" +
-                        "Returns [{type, text?, x, y, width, height, active?, focused?, children?}, ...].\n" +
-                        "Use this to understand the full screen layout before clicking.",
-                jsonSchema("object", jsonProperty("_", "string", "No parameters"))));
-
-        tools.add(makeTool("pendulum_click_button",
-                "Find a button/widget by text (substring match) or type name and click its center.\n" +
-                        "Searches recursively through all widgets. Returns the widget info that was clicked.",
+        tools.add(makeTool("simulate/hotkey",
+                I18n.get("pendulum.mcp.tool.hotkey"),
                 jsonSchema("object",
-                        jsonProperty("target", "string", "Text to match (substring, case-insensitive) or widget type name."))));
+                        jsonProperty("keys", "string", I18n.get("pendulum.mcp.tool.hotkey.param.keys")))));
 
-        tools.add(makeTool("pendulum_wait",
-                "Wait for a specified duration. Useful for sequencing actions between clicks and screenshots.",
+        tools.add(makeTool("simulate/mouseDrag",
+                I18n.get("pendulum.mcp.tool.mouse_drag"),
                 jsonSchema("object",
-                        jsonProperty("seconds", "number", "Seconds to wait. Default 1.0.", false))));
+                        jsonProperty("xStart", "integer", I18n.get("pendulum.mcp.tool.mouse_drag.param.x1")),
+                        jsonProperty("yStart", "integer", I18n.get("pendulum.mcp.tool.mouse_drag.param.y1")),
+                        jsonProperty("xEnd", "integer", I18n.get("pendulum.mcp.tool.mouse_drag.param.x2")),
+                        jsonProperty("yEnd", "integer", I18n.get("pendulum.mcp.tool.mouse_drag.param.y2")),
+                        jsonProperty("button", "string", I18n.get("pendulum.mcp.tool.click.param.button"), false))));
 
-        tools.add(makeTool("pendulum_call_screen_method",
-                "Call an arbitrary method on the current GUI screen via reflection.\n" +
-                        "DANGEROUS — use only when standard tools are insufficient. The method is called with reflection;\n" +
-                        "all exceptions are caught and returned as errors. Returns the method result or an error JSON.",
+        tools.add(makeTool("simulate/callScreenMethod",
+                I18n.get("pendulum.mcp.tool.call_screen_method"),
                 jsonSchema("object",
-                        jsonProperty("method", "string", "Method name to call on the current screen object."))));
+                        jsonProperty("method", "string", I18n.get("pendulum.mcp.tool.call_screen_method.param.method")))));
 
-        tools.add(makeTool("pendulum_select_list_item",
-                "Select an item from a dropdown list widget on the current screen.\n" +
-                        "Searches the widget tree for a list widget (e.g. ObjectSelectionList) and selects the item\n" +
-                        "whose text contains the given substring (case-insensitive).",
+        tools.add(makeTool("simulate/selectListItem",
+                I18n.get("pendulum.mcp.tool.select_list_item"),
                 jsonSchema("object",
-                        jsonProperty("text", "string", "Text substring to match for the list item."))));
+                        jsonProperty("text", "string", I18n.get("pendulum.mcp.tool.select_list_item.param.text")))));
 
-        // ---- Video Frame Capture (experimental — prefer pendulum_screenshot) ----
-        tools.add(makeTool("pendulum_video_start",
-                "EXPERIMENTAL — Start continuous video frame capture. Captures ~10fps and caches the latest frame.\n" +
-                        "WARNING: This reads the GPU framebuffer every 6 frames, which is expensive. Use sparingly.\n" +
-                        "Prefer pendulum_screenshot for single screenshots. Use video mode only when you need\n" +
-                        "to observe continuous motion (entity movement, falling items, animations).",
-                jsonSchema("object", jsonProperty("_", "string", "No parameters"))));
+        // ---- Utility ----
+        tools.add(makeTool("wait",
+                I18n.get("pendulum.mcp.tool.wait"),
+                jsonSchema("object",
+                        jsonProperty("seconds", "number", I18n.get("pendulum.mcp.tool.wait.param.seconds"), false))));
 
-        tools.add(makeTool("pendulum_video_stop",
-                "Stop video frame capture and release resources.",
-                jsonSchema("object", jsonProperty("_", "string", "No parameters"))));
+        // ---- Video Frame Capture (experimental) ----
+        tools.add(makeTool("video/start",
+                I18n.get("pendulum.mcp.tool.video_start"),
+                jsonSchema("object", jsonProperty("_", "string", I18n.get("pendulum.mcp.tool.no_params")))));
 
-        tools.add(makeTool("pendulum_video_frame",
-                "Get the latest cached video frame as base64 PNG. Returns error if no recent frame (< 5s old).\n" +
-                        "Call periodically while pendulum_video_start is active to observe motion.",
-                jsonSchema("object", jsonProperty("_", "string", "No parameters"))));
+        tools.add(makeTool("video/stop",
+                I18n.get("pendulum.mcp.tool.video_stop"),
+                jsonSchema("object", jsonProperty("_", "string", I18n.get("pendulum.mcp.tool.no_params")))));
+
+        tools.add(makeTool("video/frame",
+                I18n.get("pendulum.mcp.tool.video_frame"),
+                jsonSchema("object", jsonProperty("_", "string", I18n.get("pendulum.mcp.tool.no_params")))));
 
         JsonObject result = new JsonObject();
         result.add("tools", tools);
@@ -356,6 +336,7 @@ public final class McpServer {
         JsonObject params = req.has("params") ? req.getAsJsonObject("params") : new JsonObject();
         String toolName = params.has("name") ? params.get("name").getAsString() : "";
         JsonObject arguments = params.has("arguments") ? params.getAsJsonObject("arguments") : new JsonObject();
+        String traceId = "trace-" + System.currentTimeMillis() + "-" + (int)(Math.random()*10000);
 
         long startMs = System.currentTimeMillis();
         boolean isError = false;
@@ -363,7 +344,7 @@ public final class McpServer {
         try {
             JsonArray content = new JsonArray();
             switch (toolName) {
-                case "pendulum_eval": {
+                case "script/eval": {
                     String code = arguments.has("code") ? arguments.get("code").getAsString() : "";
                     if (code.isEmpty()) {
                         content.add(textContent("Error: 'code' parameter is required."));
@@ -372,8 +353,8 @@ public final class McpServer {
                             CompletableFuture<String> resultFuture = new CompletableFuture<>();
                             ScriptEngine.getInstance().execWithCallback(code, resultFuture);
                             try {
-                                String result = resultFuture.get(30, java.util.concurrent.TimeUnit.SECONDS);
-                                content.add(textContent(result));
+                                String result = resultFuture.get(120, java.util.concurrent.TimeUnit.SECONDS);
+                                content.add(textContent("[trace:" + traceId + "] " + result));
                             } catch (Exception e) {
                                 content.add(textContent("Timeout or error: " + e.getMessage()));
                             }
@@ -381,187 +362,201 @@ public final class McpServer {
                     }
                     break;
                 }
-                case "pendulum_status": {
-                    boolean isRunning = ScriptEngine.getInstance().isRunning();
-                    String status = ScriptEngine.getInstance().getStatus();
-                    content.add(textContent(isRunning ? "Running: " + status : "Idle"));
+                case "script/evalAsync": {
+                    String code = arguments.has("code") ? arguments.get("code").getAsString() : "";
+                    if (code.isEmpty()) {
+                        content.add(textContent("Error: 'code' parameter is required."));
+                    } else {
+                        ScriptEngine.getInstance().execWithCallback(code, new CompletableFuture<>());
+                        content.add(textContent("Script submitted. Use status to check. trace: " + traceId));
+                    }
                     break;
                 }
-                case "pendulum_abort": {
+                case "script/status": {
+                    boolean running = ScriptEngine.getInstance().isRunning();
+                    String result = ScriptEngine.getInstance().lastEvalResult;
+                    JsonObject s = new JsonObject();
+                    s.addProperty("running", running);
+                    if (result != null) s.addProperty("lastResult", result);
+                    content.add(textContent(GSON.toJson(s)));
+                    break;
+                }
+                case "script/abort": {
                     ScriptEngine.getInstance().abort();
                     content.add(textContent("Script aborted."));
                     break;
                 }
-                case "pendulum_screenshot": {
+                case "health": {
+                    JsonObject h = new JsonObject();
+                    h.addProperty("scriptRunning", ScriptEngine.getInstance().isRunning());
+                    h.addProperty("mcpServer", isRunning());
+                    h.addProperty("baritone", BaritoneHelper.isLoaded());
+                    try {
+                        String test = takeScreenshotB64();
+                        h.addProperty("screenshot", test != null && test.length() > 100);
+                    } catch (Exception e) {
+                        h.addProperty("screenshot", false);
+                        h.addProperty("screenshotError", e.getMessage());
+                    }
+                    h.addProperty("keyboardInjection", "GLFW only (Minecraft window focus required)");
+                    content.add(textContent(GSON.toJson(h)));
+                    break;
+                }
+                case "gui/screenshot": {
                     String b64 = takeScreenshotB64();
-                    if (b64 != null) {
-                        content.add(imageContent("data:image/png;base64," + b64, "image/png"));
-                    } else {
+                    if (b64 == null) {
                         content.add(textContent("Failed to capture screenshot."));
+                    } else {
+                        // Always return base64 image
+                        content.add(imageContent(b64, "image/png"));
+                        // Optionally save to disk
+                        String path = arguments.has("path") ? arguments.get("path").getAsString() : null;
+                        if (path != null && !path.isEmpty()) {
+                            Path fp = Paths.get(path);
+                            Files.createDirectories(fp.getParent());
+                            byte[] pngBytes = Base64.getDecoder().decode(b64);
+                            Files.write(fp, pngBytes);
+                            content.add(textContent("{\"saved\":\"" + fp.toAbsolutePath().toString().replace("\\", "\\\\") + "\",\"size\":" + pngBytes.length + "}"));
+                        }
                     }
                     break;
                 }
-                case "pendulum_gui_elements": {
-                    String json = getGuiElementsJson();
-                    content.add(textContent(json != null ? json : "No GUI open or error reading elements."));
-                    break;
-                }
-                case "pendulum_click": {
+                case "simulate/click": {
                     int x = arguments.has("x") ? arguments.get("x").getAsInt() : 0;
                     int y = arguments.has("y") ? arguments.get("y").getAsInt() : 0;
                     String btn = arguments.has("button") ? arguments.get("button").getAsString() : "left";
                     int button = btn.equals("right") ? 1 : btn.equals("middle") ? 2 : 0;
                     ScreenInputHelper.clickAt(x, y, button);
-                    content.add(textContent("Clicked at (" + x + ", " + y + ") with " + btn + " button."));
+                    content.add(textContent("Clicked (" + x + "," + y + ") " + btn));
                     break;
                 }
-                case "pendulum_press_key": {
+                case "gui/clickButton": {
+                    String target = arguments.has("target") ? arguments.get("target").getAsString() : "";
+                    if (target.isEmpty()) {
+                        content.add(textContent("Error: 'target' is required."));
+                    } else {
+                        String r = clickWidgetByText(target);
+                        content.add(textContent(r != null ? r : "{\"error\":\"widget not found: " + target + "\"}"));
+                    }
+                    break;
+                }
+                case "gui/enumerateWidgets": {
+                    String json = enumerateAllWidgetsJson();
+                    content.add(textContent(json != null ? json : "No GUI open."));
+                    break;
+                }
+                case "gui/guiElements": {
+                    String json = getGuiElementsJson();
+                    content.add(textContent(json != null ? json : "No GUI open."));
+                    break;
+                }
+                case "simulate/pressKey": {
                     String key = arguments.has("key") ? arguments.get("key").getAsString() : "";
-                    float hold = arguments.has("hold_seconds") ? arguments.get("hold_seconds").getAsFloat() : 0f;
+                    float hold = arguments.has("holdSeconds") ? arguments.get("holdSeconds").getAsFloat() : 0f;
                     if (key.isEmpty()) {
-                        content.add(textContent("Error: 'key' parameter is required."));
+                        content.add(textContent("Error: 'key' is required."));
                     } else {
                         ScreenInputHelper.pressKey(key, hold);
-                        content.add(textContent("Pressed key: " + key + (hold > 0 ? " for " + hold + "s" : "")));
+                        content.add(textContent("Pressed " + key + (hold > 0 ? " for " + hold + "s" : "")));
                     }
                     break;
                 }
-                case "pendulum_type_text": {
+                case "simulate/typeText": {
                     String text = arguments.has("text") ? arguments.get("text").getAsString() : "";
-                    boolean pressEnter = arguments.has("press_enter") && arguments.get("press_enter").getAsBoolean();
+                    boolean enter = arguments.has("pressEnter") && arguments.get("pressEnter").getAsBoolean();
                     if (text.isEmpty()) {
-                        content.add(textContent("Error: 'text' parameter is required."));
+                        content.add(textContent("Error: 'text' is required."));
                     } else {
                         ScreenInputHelper.typeText(text);
-                        if (pressEnter) {
-                            try { Thread.sleep(50); } catch (InterruptedException ignored) {}
-                            ScreenInputHelper.pressKey("ENTER", 0f);
-                        }
-                        content.add(textContent("Typed " + text.length() + " characters." + (pressEnter ? " + Enter" : "")));
+                        if (enter) { try { Thread.sleep(50); } catch (InterruptedException ignored) {} ScreenInputHelper.pressKey("ENTER", 0f); }
+                        content.add(textContent("Typed " + text.length() + " chars" + (enter ? " + Enter" : "")));
                     }
                     break;
                 }
-                case "pendulum_paste_text": {
+                case "simulate/pasteText": {
                     String text = arguments.has("text") ? arguments.get("text").getAsString() : "";
-                    boolean pressEnter = arguments.has("press_enter") && arguments.get("press_enter").getAsBoolean();
+                    boolean enter = arguments.has("pressEnter") && arguments.get("pressEnter").getAsBoolean();
                     if (text.isEmpty()) {
-                        content.add(textContent("Error: 'text' parameter is required."));
+                        content.add(textContent("Error: 'text' is required."));
                     } else {
                         ScreenInputHelper.typeText(text);
-                        if (pressEnter) {
-                            try { Thread.sleep(50); } catch (InterruptedException ignored) {}
-                            ScreenInputHelper.pressKey("ENTER", 0f);
-                        }
-                        content.add(textContent("Pasted " + text.length() + " characters." + (pressEnter ? " + Enter" : "")));
+                        if (enter) { try { Thread.sleep(50); } catch (InterruptedException ignored) {} ScreenInputHelper.pressKey("ENTER", 0f); }
+                        content.add(textContent("Pasted " + text.length() + " chars" + (enter ? " + Enter" : "")));
                     }
                     break;
                 }
-                case "pendulum_scroll": {
+                case "simulate/scroll": {
                     int clicks = arguments.has("clicks") ? arguments.get("clicks").getAsInt() : 0;
                     ScreenInputHelper.scroll(clicks);
-                    content.add(textContent("Scrolled " + clicks + " clicks."));
+                    content.add(textContent("Scrolled " + clicks));
                     break;
                 }
-                case "pendulum_hotkey": {
+                case "simulate/hotkey": {
                     String keys = arguments.has("keys") ? arguments.get("keys").getAsString() : "";
                     if (keys.isEmpty()) {
-                        content.add(textContent("Error: 'keys' parameter is required."));
+                        content.add(textContent("Error: 'keys' is required."));
                     } else {
                         String[] parts = keys.split(",");
                         for (String k : parts) ScreenInputHelper.injectKey(k.trim(), 1);
                         try { Thread.sleep(50); } catch (InterruptedException ignored) {}
-                        for (int i = parts.length - 1; i >= 0; i--)
-                            ScreenInputHelper.injectKey(parts[i].trim(), 0);
-                        content.add(textContent("Pressed hotkey: " + keys));
+                        for (int i = parts.length - 1; i >= 0; i--) ScreenInputHelper.injectKey(parts[i].trim(), 0);
+                        content.add(textContent("Hotkey: " + keys));
                     }
                     break;
                 }
-                case "pendulum_mouse_drag": {
-                    int x1 = arguments.has("x_start") ? arguments.get("x_start").getAsInt() : 0;
-                    int y1 = arguments.has("y_start") ? arguments.get("y_start").getAsInt() : 0;
-                    int x2 = arguments.has("x_end") ? arguments.get("x_end").getAsInt() : 0;
-                    int y2 = arguments.has("y_end") ? arguments.get("y_end").getAsInt() : 0;
+                case "simulate/mouseDrag": {
+                    int x1 = arguments.has("xStart") ? arguments.get("xStart").getAsInt() : 0;
+                    int y1 = arguments.has("yStart") ? arguments.get("yStart").getAsInt() : 0;
+                    int x2 = arguments.has("xEnd") ? arguments.get("xEnd").getAsInt() : 0;
+                    int y2 = arguments.has("yEnd") ? arguments.get("yEnd").getAsInt() : 0;
                     String btn = arguments.has("button") ? arguments.get("button").getAsString() : "left";
                     int button = btn.equals("right") ? 1 : btn.equals("middle") ? 2 : 0;
                     ScreenInputHelper.mouseDrag(x1, y1, x2, y2, button);
-                    content.add(textContent("Dragged from (" + x1 + "," + y1 + ") to (" + x2 + "," + y2 + ")"));
+                    content.add(textContent("Dragged (" + x1 + "," + y1 + ")→(" + x2 + "," + y2 + ")"));
                     break;
                 }
-                case "pendulum_screenshot_to_file": {
-                    String b64 = takeScreenshotB64();
-                    if (b64 == null) {
-                        content.add(textContent("Failed to capture screenshot."));
-                    } else {
-                        String path = arguments.has("path") ? arguments.get("path").getAsString() : null;
-                        if (path == null || path.isEmpty()) {
-                            Files.createDirectories(Paths.get("pendulum", "screenshots"));
-                            path = "pendulum/screenshots/pendulum_" + System.currentTimeMillis() + ".png";
-                        }
-                        Path fp = Paths.get(path);
-                        Files.createDirectories(fp.getParent());
-                        byte[] pngBytes = Base64.getDecoder().decode(b64);
-                        Files.write(fp, pngBytes);
-                        content.add(textContent("{\"file\":\"" + fp.toAbsolutePath().toString().replace("\\", "\\\\") + "\",\"size\":" + pngBytes.length + "}"));
-                    }
-                    break;
-                }
-                case "pendulum_enumerate_widgets": {
-                    String json = enumerateAllWidgetsJson();
-                    content.add(textContent(json != null ? json : "No GUI open or error reading widgets."));
-                    break;
-                }
-                case "pendulum_click_button": {
-                    String target = arguments.has("target") ? arguments.get("target").getAsString() : "";
-                    if (target.isEmpty()) {
-                        content.add(textContent("Error: 'target' parameter is required."));
-                    } else {
-                        String result = clickWidgetByText(target);
-                        content.add(textContent(result != null ? result : "{\"error\":\"widget not found: " + target + "\"}"));
-                    }
-                    break;
-                }
-                case "pendulum_wait": {
-                    double seconds = arguments.has("seconds") ? arguments.get("seconds").getAsDouble() : 1.0;
-                    try { Thread.sleep((long)(seconds * 1000)); } catch (InterruptedException ignored) {}
-                    content.add(textContent("Waited " + seconds + " seconds."));
-                    break;
-                }
-                case "pendulum_call_screen_method": {
+                case "simulate/callScreenMethod": {
                     String methodName = arguments.has("method") ? arguments.get("method").getAsString() : "";
                     if (methodName.isEmpty()) {
-                        content.add(textContent("Error: 'method' parameter is required."));
+                        content.add(textContent("Error: 'method' is required."));
                     } else {
                         String res = callScreenMethod(methodName);
                         content.add(textContent(res != null ? res : "{\"error\":\"no screen\"}"));
                     }
                     break;
                 }
-                case "pendulum_select_list_item": {
+                case "simulate/selectListItem": {
                     String itemText = arguments.has("text") ? arguments.get("text").getAsString() : "";
                     if (itemText.isEmpty()) {
-                        content.add(textContent("Error: 'text' parameter is required."));
+                        content.add(textContent("Error: 'text' is required."));
                     } else {
                         String res = selectListItem(itemText);
                         content.add(textContent(res != null ? res : "{\"error\":\"no screen or list not found\"}"));
                     }
                     break;
                 }
-                case "pendulum_video_start": {
+                case "wait": {
+                    double seconds = arguments.has("seconds") ? arguments.get("seconds").getAsDouble() : 1.0;
+                    try { Thread.sleep((long)(seconds * 1000)); } catch (InterruptedException ignored) {}
+                    content.add(textContent("Waited " + seconds + "s."));
+                    break;
+                }
+                case "video/start": {
                     videoCaptureActive = true;
                     videoFrameCounter = 0;
                     videoFrameCache = null;
-                    content.add(textContent("Video capture started (~10fps). Call pendulum_video_frame to get frames."));
+                    content.add(textContent("Video capture started (~10fps)."));
                     break;
                 }
-                case "pendulum_video_stop": {
+                case "video/stop": {
                     videoCaptureActive = false;
                     videoFrameCache = null;
                     content.add(textContent("Video capture stopped."));
                     break;
                 }
-                case "pendulum_video_frame": {
+                case "video/frame": {
                     if (!videoCaptureActive) {
-                        content.add(textContent("{\"error\":\"video capture not active, call pendulum_video_start first\"}"));
+                        content.add(textContent("{\"error\":\"video capture not active\"}"));
                     } else {
                         String b64 = getVideoFrame();
                         if (b64.startsWith("{\"error\"")) {
@@ -660,7 +655,8 @@ public final class McpServer {
         if (cached == null || System.currentTimeMillis() - videoFrameTime > 5000) {
             return "{\"error\":\"no recent frame available, is video capture active?\"}";
         }
-        return "data:image/png;base64," + Base64.getEncoder().encodeToString(cached);
+        // Return raw base64 — the caller (imageContent) already wraps it in a data URI
+        return Base64.getEncoder().encodeToString(cached);
     }
 
     // ---- External endpoint helpers ----
@@ -692,26 +688,59 @@ public final class McpServer {
         File tmp = null;
         try {
             Minecraft mc = Minecraft.getInstance();
+            if (mc.getWindow() == null) return null;
             int w = mc.getWindow().getWidth();
             int h = mc.getWindow().getHeight();
-            NativeImage img = new NativeImage(w, h, false);
-            mc.getMainRenderTarget().bindRead();
-            img.downloadTexture(0, false);
-            img.flipY();
-            tmp = File.createTempFile("pendulum_ss", ".png");
-            img.writeToFile(tmp);
-            img.close();
-            byte[] pngBytes = Files.readAllBytes(tmp.toPath());
+            if (w <= 0 || h <= 0) return null;
 
-            // Add coordinate grid overlay
+            // Capture on the game thread so GPU framebuffer read works.
+            // Falls back to AWT Robot only if the game thread itself can't read
+            // the framebuffer (e.g. window minimized).
+            byte[] pngBytes = ScriptEngine.submitToGameThread(() -> {
+                File localTmp = null;
+                try {
+                    // 1) GPU framebuffer (preferred — only captures Minecraft window)
+                    try {
+                        NativeImage img = new NativeImage(w, h, false);
+                        mc.getMainRenderTarget().bindRead();
+                        img.downloadTexture(0, false);
+                        img.flipY();
+                        localTmp = File.createTempFile("pendulum_ss", ".png");
+                        img.writeToFile(localTmp);
+                        img.close();
+                        return Files.readAllBytes(localTmp.toPath());
+                    } catch (Exception e) {
+                        LOGGER.warn("GPU screenshot failed, trying AWT Robot fallback: {}", e.getMessage());
+                    }
+
+                    // 2) AWT Robot fallback (window minimized / headless)
+                    try {
+                        java.awt.Robot robot = new java.awt.Robot();
+                        java.awt.Rectangle bounds = new java.awt.Rectangle(
+                                mc.getWindow().getX(), mc.getWindow().getY(), w, h);
+                        java.awt.image.BufferedImage awtImg = robot.createScreenCapture(bounds);
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        ImageIO.write(awtImg, "png", baos);
+                        byte[] bytes = baos.toByteArray();
+                        LOGGER.info("AWT Robot screenshot captured {} bytes", bytes.length);
+                        return bytes;
+                    } catch (Exception e2) {
+                        LOGGER.error("AWT Robot fallback also failed: {}", e2.getMessage());
+                        return null;
+                    }
+                } finally {
+                    if (localTmp != null) localTmp.delete();
+                }
+            });
+
+            if (pngBytes == null || pngBytes.length < 100) return null;
+
+            // Add coordinate grid overlay (CPU-only, safe on any thread)
             pngBytes = addCoordinateGrid(pngBytes, w, h);
-
             return Base64.getEncoder().encodeToString(pngBytes);
         } catch (Exception e) {
             LOGGER.error("Screenshot failed", e);
             return null;
-        } finally {
-            if (tmp != null) tmp.delete();
         }
     }
 
@@ -795,53 +824,27 @@ public final class McpServer {
 
     private static JsonObject buildWidgetJson(Object widget, boolean recurse) {
         JsonObject obj = new JsonObject();
-        Class<?> clazz = widget.getClass();
-        obj.addProperty("type", clazz.getSimpleName());
+        obj.addProperty("type", widget.getClass().getSimpleName());
 
-        try {
-            java.lang.reflect.Field xF = findAccessibleField(clazz, "x", "getX", "field_22786");
-            java.lang.reflect.Field yF = findAccessibleField(clazz, "y", "getY", "field_22787");
-            java.lang.reflect.Field wF = findAccessibleField(clazz, "width", "getWidth", "field_22788");
-            java.lang.reflect.Field hF = findAccessibleField(clazz, "height", "getHeight", "field_22789");
-            if (xF != null) obj.addProperty("x", ((Number) xF.get(widget)).intValue());
-            if (yF != null) obj.addProperty("y", ((Number) yF.get(widget)).intValue());
-            if (wF != null) obj.addProperty("width", ((Number) wF.get(widget)).intValue());
-            if (hF != null) obj.addProperty("height", ((Number) hF.get(widget)).intValue());
-        } catch (Exception ignored) {
-        }
-        try {
-            java.lang.reflect.Field msgF = findAccessibleField(clazz, "message", "getMessage", "field_22791");
-            if (msgF != null) {
-                Object msg = msgF.get(widget);
-                obj.addProperty("text", msg instanceof net.minecraft.network.chat.Component c ? c.getString() : msg.toString());
-            }
-        } catch (Exception ignored) {
-        }
-        try {
-            java.lang.reflect.Field activeF = findAccessibleField(clazz, "active", "isActive", "field_22792");
-            if (activeF != null) obj.addProperty("active", activeF.getBoolean(widget));
-        } catch (Exception ignored) {
-        }
-        try {
-            java.lang.reflect.Field focusedF = findAccessibleField(clazz, "isFocused", "focused", "field_22801");
-            if (focusedF != null) obj.addProperty("focused", focusedF.getBoolean(widget));
-        } catch (Exception ignored) {
+        if (widget instanceof AbstractWidget w) {
+            obj.addProperty("x", w.getX());
+            obj.addProperty("y", w.getY());
+            obj.addProperty("width", w.getWidth());
+            obj.addProperty("height", w.getHeight());
+            net.minecraft.network.chat.Component msg = w.getMessage();
+            if (msg != null) obj.addProperty("text", msg.getString());
+            obj.addProperty("active", w.active);
+            obj.addProperty("focused", w.isFocused());
         }
 
         if (recurse) {
-            try {
-                java.lang.reflect.Field childrenF = findAccessibleField(clazz, "children", "renderables", "widgets");
-                if (childrenF != null) {
-                    Object children = childrenF.get(widget);
-                    if (children instanceof java.util.List<?> list) {
-                        JsonArray childArr = new JsonArray();
-                        for (Object child : list) {
-                            childArr.add(buildWidgetJson(child, true));
-                        }
-                        if (childArr.size() > 0) obj.add("children", childArr);
-                    }
+            java.util.List<?> list = com.iafenvoy.pendulum.api.GuiAPI.tryGetChildren(widget);
+            if (list != null) {
+                JsonArray childArr = new JsonArray();
+                for (Object child : list) {
+                    childArr.add(buildWidgetJson(child, true));
                 }
-            } catch (Exception ignored) {
+                if (childArr.size() > 0) obj.add("children", childArr);
             }
         }
 
@@ -858,18 +861,13 @@ public final class McpServer {
             Object found = findWidgetByText(mc.screen.children(), target.toLowerCase());
             if (found == null) return "{\"error\":\"widget not found\"}";
 
-            java.lang.reflect.Field xF = findAccessibleField(found.getClass(), "x", "getX");
-            java.lang.reflect.Field yF = findAccessibleField(found.getClass(), "y", "getY");
-            java.lang.reflect.Field wF = findAccessibleField(found.getClass(), "width", "getWidth");
-            java.lang.reflect.Field hF = findAccessibleField(found.getClass(), "height", "getHeight");
-            int wx = xF != null ? ((Number) xF.get(found)).intValue() : 0;
-            int wy = yF != null ? ((Number) yF.get(found)).intValue() : 0;
-            int ww = wF != null ? ((Number) wF.get(found)).intValue() : 0;
-            int wh = hF != null ? ((Number) hF.get(found)).intValue() : 0;
-            int cx = wx + ww / 2;
-            int cy = wy + wh / 2;
-            new Thread(() -> ScreenInputHelper.clickAt(cx, cy, 0)).start();
-            return "{\"clicked\":true,\"widget\":\"" + found.getClass().getSimpleName() + "\",\"x\":" + cx + ",\"y\":" + cy + "}";
+            if (found instanceof AbstractWidget w) {
+                int cx = w.getX() + w.getWidth() / 2;
+                int cy = w.getY() + w.getHeight() / 2;
+                new Thread(() -> ScreenInputHelper.clickAt(cx, cy, 0)).start();
+                return "{\"clicked\":true,\"widget\":\"" + w.getClass().getSimpleName() + "\",\"x\":" + cx + ",\"y\":" + cy + "}";
+            }
+            return "{\"error\":\"widget has no position\"}";
         } catch (Exception e) {
             return "{\"error\":\"" + e.getMessage() + "\"}";
         }
@@ -877,29 +875,15 @@ public final class McpServer {
 
     private static Object findWidgetByText(java.util.List<?> children, String target) {
         for (Object child : children) {
-            Class<?> clazz = child.getClass();
-            try {
-                java.lang.reflect.Field msgF = findAccessibleField(clazz, "message", "getMessage", "field_22791");
-                if (msgF != null) {
-                    Object msg = msgF.get(child);
-                    String text = msg instanceof net.minecraft.network.chat.Component c ? c.getString().toLowerCase() : msg.toString().toLowerCase();
-                    if (text.contains(target)) return child;
-                }
-            } catch (Exception ignored) {
+            if (child instanceof AbstractWidget w) {
+                net.minecraft.network.chat.Component msg = w.getMessage();
+                if (msg != null && msg.getString().toLowerCase().contains(target)) return child;
             }
-            if (clazz.getSimpleName().toLowerCase().contains(target)) return child;
-            try {
-                java.lang.reflect.Field childrenF = findAccessibleField(clazz, "children", "renderables");
-                if (childrenF != null) {
-                    Object subChildren = childrenF.get(child);
-                    if (subChildren instanceof java.util.List) {
-                        @SuppressWarnings("unchecked")
-                        java.util.List<Object> list = (java.util.List<Object>) subChildren;
-                        Object found = findWidgetByText(list, target);
-                        if (found != null) return found;
-                    }
-                }
-            } catch (Exception ignored) {
+            if (child.getClass().getSimpleName().toLowerCase().contains(target)) return child;
+            java.util.List<?> sub = com.iafenvoy.pendulum.api.GuiAPI.tryGetChildren(child);
+            if (sub != null) {
+                Object found = findWidgetByText(sub, target);
+                if (found != null) return found;
             }
         }
         return null;
@@ -972,53 +956,29 @@ public final class McpServer {
 
             // Check if this is a list-like widget
             if (cn.contains("list") || cn.contains("selectionlist") || cn.contains("entrylist") || cn.contains("choices")) {
-                // Try to find children list or entries
-                try {
-                    java.lang.reflect.Field childrenF = findAccessibleField(clazz, "children", "entries", "items", "listEntries");
-                    if (childrenF != null) {
-                        Object entries = childrenF.get(child);
-                        if (entries instanceof java.util.List<?> entryList) {
-                            for (Object entry : entryList) {
-                                // Check if entry text matches
-                                try {
-                                    java.lang.reflect.Field msgF = findAccessibleField(entry.getClass(), "message", "getMessage", "name", "getName");
-                                    if (msgF != null) {
-                                        Object msg = msgF.get(entry);
-                                        String entryText = msg instanceof net.minecraft.network.chat.Component c ? c.getString() : msg.toString();
-                                        if (entryText.toLowerCase().contains(target)) {
-                                            // Click on this entry via its position
-                                            java.lang.reflect.Field xF = findAccessibleField(entry.getClass(), "x", "getX");
-                                            java.lang.reflect.Field yF = findAccessibleField(entry.getClass(), "y", "getY");
-                                            java.lang.reflect.Field wF = findAccessibleField(entry.getClass(), "width", "getWidth");
-                                            java.lang.reflect.Field hF = findAccessibleField(entry.getClass(), "height", "getHeight");
-                                            int ex = xF != null ? ((Number) xF.get(entry)).intValue() : 0;
-                                            int ey = yF != null ? ((Number) yF.get(entry)).intValue() : 0;
-                                            int ew = wF != null ? ((Number) wF.get(entry)).intValue() : 0;
-                                            int eh = hF != null ? ((Number) hF.get(entry)).intValue() : 0;
-                                            new Thread(() -> ScreenInputHelper.clickAt(ex + ew / 2, ey + eh / 2, 0)).start();
-                                            return "{\"selected\":true,\"text\":\"" + entryText.replace("\\", "\\\\").replace("\"", "\\\"") + "\",\"x\":" + (ex + ew / 2) + ",\"y\":" + (ey + eh / 2) + "}";
-                                        }
-                                    }
-                                } catch (Exception ignored) {}
+                java.util.List<?> entries = com.iafenvoy.pendulum.api.GuiAPI.tryGetChildren(child);
+                if (entries != null) {
+                    for (Object entry : entries) {
+                        if (entry instanceof AbstractWidget ew) {
+                            net.minecraft.network.chat.Component msg = ew.getMessage();
+                            String entryText = msg != null ? msg.getString() : "";
+                            if (entryText.toLowerCase().contains(target)) {
+                                int cx = ew.getX() + ew.getWidth() / 2;
+                                int cy = ew.getY() + ew.getHeight() / 2;
+                                new Thread(() -> ScreenInputHelper.clickAt(cx, cy, 0)).start();
+                                return "{\"selected\":true,\"text\":\"" + entryText.replace("\\", "\\\\").replace("\"", "\\\"") + "\",\"x\":" + cx + ",\"y\":" + cy + "}";
                             }
                         }
                     }
-                } catch (Exception ignored) {}
+                }
             }
 
             // Recurse into children
-            try {
-                java.lang.reflect.Field childrenF = findAccessibleField(clazz, "children", "renderables", "widgets");
-                if (childrenF != null) {
-                    Object subChildren = childrenF.get(child);
-                    if (subChildren instanceof java.util.List) {
-                        @SuppressWarnings("unchecked")
-                        java.util.List<Object> list = (java.util.List<Object>) subChildren;
-                        String result = selectListItemRecursive(list, target);
-                        if (result != null && result.contains("\"selected\":true")) return result;
-                    }
-                }
-            } catch (Exception ignored) {}
+            java.util.List<?> sub = com.iafenvoy.pendulum.api.GuiAPI.tryGetChildren(child);
+            if (sub != null) {
+                String result = selectListItemRecursive(sub, target);
+                if (result != null && result.contains("\"selected\":true")) return result;
+            }
         }
         return "{\"error\":\"list item not found: " + target + "\"}";
     }
@@ -1031,24 +991,13 @@ public final class McpServer {
             for (var child : mc.screen.children()) {
                 JsonObject obj = new JsonObject();
                 obj.addProperty("type", child.getClass().getSimpleName());
-                try {
-                    java.lang.reflect.Field xF = findAccessibleField(child.getClass(), "x", "getX", "field_22786");
-                    java.lang.reflect.Field yF = findAccessibleField(child.getClass(), "y", "getY", "field_22787");
-                    java.lang.reflect.Field wF = findAccessibleField(child.getClass(), "width", "getWidth", "field_22788");
-                    java.lang.reflect.Field hF = findAccessibleField(child.getClass(), "height", "getHeight", "field_22789");
-                    if (xF != null) obj.addProperty("x", ((Number) xF.get(child)).intValue());
-                    if (yF != null) obj.addProperty("y", ((Number) yF.get(child)).intValue());
-                    if (wF != null) obj.addProperty("width", ((Number) wF.get(child)).intValue());
-                    if (hF != null) obj.addProperty("height", ((Number) hF.get(child)).intValue());
-                } catch (Exception ignored) {
-                }
-                try {
-                    java.lang.reflect.Field msgF = findAccessibleField(child.getClass(), "message", "getMessage", "field_22791");
-                    if (msgF != null) {
-                        Object msg = msgF.get(child);
-                        obj.addProperty("text", msg instanceof net.minecraft.network.chat.Component c ? c.getString() : msg.toString());
-                    }
-                } catch (Exception ignored) {
+                if (child instanceof AbstractWidget w) {
+                    obj.addProperty("x", w.getX());
+                    obj.addProperty("y", w.getY());
+                    obj.addProperty("width", w.getWidth());
+                    obj.addProperty("height", w.getHeight());
+                    net.minecraft.network.chat.Component msg = w.getMessage();
+                    if (msg != null) obj.addProperty("text", msg.getString());
                 }
                 arr.add(obj);
             }
@@ -1057,19 +1006,6 @@ public final class McpServer {
             LOGGER.error("Failed to read GUI elements", e);
             return null;
         }
-    }
-
-    private static java.lang.reflect.Field findAccessibleField(Class<?> clazz, String... candidates) {
-        for (String name : candidates) {
-            try {
-                java.lang.reflect.Field f = clazz.getDeclaredField(name);
-                f.setAccessible(true);
-                return f;
-            } catch (NoSuchFieldException ignored) {
-            }
-        }
-        if (clazz.getSuperclass() != null) return findAccessibleField(clazz.getSuperclass(), candidates);
-        return null;
     }
 
     // ---- JSON-RPC helpers ----

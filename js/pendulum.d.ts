@@ -85,6 +85,14 @@ interface PendulumRayTraceMiss {
 
 type PendulumRayTrace = PendulumRayTraceBlock | PendulumRayTraceEntity | PendulumRayTraceMiss;
 
+// ==================== Return Types ====================
+
+interface PendulumPlaceResult {
+  success: boolean;
+  /** Failure reason (only present when success=false): "Target block is not air" | "Player or world not available" | "Out of reach" | "No adjacent solid face found" | "Block not placed — check inventory" | "Place permission denied" */
+  reason?: string;
+}
+
 // ==================== GUI Types ====================
 
 interface PendulumWidget {
@@ -178,8 +186,8 @@ interface PendulumPlayerAPI {
   breakBlockAt(x: number, y: number, z: number): boolean;
   /** Place on crosshair target (unreliable — prefer placeBlockAt) */
   placeBlock(slot?: number): boolean;
-  /** Place at exact coordinate (recommended) */
-  placeBlockAt(x: number, y: number, z: number, slot?: number): boolean;
+  /** Place at exact coordinate. Returns {success: boolean, reason?: string}. */
+  placeBlockAt(x: number, y: number, z: number, slot?: number): PendulumPlaceResult;
   /** Jump up and place block under feet. Returns success. */
   jumpAndPlaceBelow(): boolean;
 
@@ -197,8 +205,8 @@ interface PendulumPlayerAPI {
 
 interface PendulumWorldAPI {
   // Block Queries
-  /** Get block ID at (x,y,z). Returns "air" if world is null. */
-  getBlock(x: number, y: number, z: number): string;
+  /** Get block ID at (x,y,z). Returns null if out of loaded chunks. */
+  getBlock(x: number, y: number, z: number): string | null;
   /** Check if block at (x,y,z) matches given ID */
   isBlock(x: number, y: number, z: number, blockId: string): boolean;
   /** Check if block at (x,y,z) matches given tag */
@@ -509,6 +517,32 @@ interface PendulumBaritone {
   help(): void;
 }
 
+// ==================== pendulum Global ====================
+
+interface PendulumGlobal {
+  // Logging (output → game log + MCP eval return)
+  /** Info-level log. Appears in MCP eval return. */
+  log(...args: unknown[]): void;
+  /** Warning-level log. Appears in MCP eval return. */
+  warn(...args: unknown[]): void;
+  /** Error-level log. Appears in MCP eval return. */
+  error(...args: unknown[]): void;
+
+  // Mod Detection
+  /** Check if a mod is loaded by its mod ID (works across Fabric/Forge/NeoForge). */
+  isModLoaded(modId: string): boolean;
+
+  // Config Permissions
+  /**
+   * Read a Pendulum config value at runtime.
+   * Boolean keys: allowBreak, allowPlace, allowAttack, allowExecuteCommand, allowSay,
+   *   mcpEnabled, syncUseAttack, logJsErrors
+   * Numeric keys: breakTimeout, rayTraceDistance, tickIntervalMs, mcpPort
+   * Returns boolean / number / null (unknown key).
+   */
+  getPermission(key: string): boolean | number | null;
+}
+
 // ==================== Global Declarations ====================
 
 /**
@@ -532,9 +566,8 @@ declare const br: PendulumBaritone;
 declare const baritone: PendulumBaritone;
 
 /**
- * Console logging.
- * console.log(...) outputs to both the Minecraft log AND the MCP eval return.
+ * Pendulum config & logging global.
+ * All output goes to the game log AND the MCP eval return string.
+ * Use pendulum.log/warn/error instead of console.log for reliable MCP communication.
  */
-declare const console: {
-  log(...args: unknown[]): void;
-};
+declare const pendulum: PendulumGlobal;
