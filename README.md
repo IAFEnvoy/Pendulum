@@ -29,12 +29,12 @@ For detailed documentation, see the [Documentation](https://docs.iafenvoy.com/do
 
 - **MCP JSON-RPC 2.0 over TCP** — native AI agent integration
 - **`script/eval`** — execute arbitrary JS and return results
-- **`gui/screenshot`** — capture the game view
-- **`gui/guiElements`** — read all visible GUI controls
-- **`simulate/click`** / **`gui/clickButton`** — click GUI elements
-- **`gui/enumerateWidgets`** — full recursive widget tree
-- **`simulate/typeText`** / **`simulate/pressKey`** — keyboard input
 - **`script/status`** / **`script/abort`** — manage script state
+- **`gui/enumerateWidgets`** — full recursive widget tree
+- **`gui/guiElements`** — read all visible GUI controls
+- **`gui/screenshot`** — capture the game view
+- **`simulate/click`** / **`gui/clickButton`** — click GUI elements
+- **`simulate/typeText`** / **`simulate/pressKey`** — keyboard input
 - Compatible with VS Code Copilot, Claude Desktop, and any MCP client
 
 ## Quick Start

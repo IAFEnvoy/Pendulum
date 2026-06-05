@@ -389,7 +389,7 @@ public final class McpServer {
                 case "health": {
                     JsonObject h = new JsonObject();
                     h.addProperty("scriptRunning", ScriptEngine.getInstance().isRunning());
-                    h.addProperty("mcpServer", isRunning());
+                    h.addProperty("mcpServer", this.isRunning());
                     h.addProperty("baritone", BaritoneHelper.isLoaded());
                     try {
                         String test = takeScreenshotB64();
@@ -436,7 +436,7 @@ public final class McpServer {
                         content.add(textContent("Error: 'target' is required."));
                     } else {
                         String r = clickWidgetByText(target);
-                        content.add(textContent(r != null ? r : "{\"error\":\"widget not found: " + target + "\"}"));
+                        content.add(textContent(r));
                     }
                     break;
                 }
@@ -521,7 +521,7 @@ public final class McpServer {
                         content.add(textContent("Error: 'method' is required."));
                     } else {
                         String res = callScreenMethod(methodName);
-                        content.add(textContent(res != null ? res : "{\"error\":\"no screen\"}"));
+                        content.add(textContent(res));
                     }
                     break;
                 }
@@ -531,7 +531,7 @@ public final class McpServer {
                         content.add(textContent("Error: 'text' is required."));
                     } else {
                         String res = selectListItem(itemText);
-                        content.add(textContent(res != null ? res : "{\"error\":\"no screen or list not found\"}"));
+                        content.add(textContent(res));
                     }
                     break;
                 }
@@ -616,7 +616,7 @@ public final class McpServer {
 
             String line = GSON.toJson(entry) + "\n";
             synchronized (logLock) {
-                Files.write(logFile, line.getBytes(StandardCharsets.UTF_8),
+                Files.writeString(logFile, line,
                         StandardOpenOption.CREATE, StandardOpenOption.APPEND);
             }
         } catch (Exception e) {
@@ -685,10 +685,8 @@ public final class McpServer {
     }
 
     private static String takeScreenshotB64() {
-        File tmp = null;
         try {
             Minecraft mc = Minecraft.getInstance();
-            if (mc.getWindow() == null) return null;
             int w = mc.getWindow().getWidth();
             int h = mc.getWindow().getHeight();
             if (w <= 0 || h <= 0) return null;
@@ -832,7 +830,7 @@ public final class McpServer {
             obj.addProperty("width", w.getWidth());
             obj.addProperty("height", w.getHeight());
             net.minecraft.network.chat.Component msg = w.getMessage();
-            if (msg != null) obj.addProperty("text", msg.getString());
+            obj.addProperty("text", msg.getString());
             obj.addProperty("active", w.active);
             obj.addProperty("focused", w.isFocused());
         }
@@ -844,7 +842,7 @@ public final class McpServer {
                 for (Object child : list) {
                     childArr.add(buildWidgetJson(child, true));
                 }
-                if (childArr.size() > 0) obj.add("children", childArr);
+                if (!childArr.isEmpty()) obj.add("children", childArr);
             }
         }
 
@@ -877,7 +875,7 @@ public final class McpServer {
         for (Object child : children) {
             if (child instanceof AbstractWidget w) {
                 net.minecraft.network.chat.Component msg = w.getMessage();
-                if (msg != null && msg.getString().toLowerCase().contains(target)) return child;
+                if (msg.getString().toLowerCase().contains(target)) return child;
             }
             if (child.getClass().getSimpleName().toLowerCase().contains(target)) return child;
             java.util.List<?> sub = com.iafenvoy.pendulum.api.GuiAPI.tryGetChildren(child);
@@ -961,7 +959,7 @@ public final class McpServer {
                     for (Object entry : entries) {
                         if (entry instanceof AbstractWidget ew) {
                             net.minecraft.network.chat.Component msg = ew.getMessage();
-                            String entryText = msg != null ? msg.getString() : "";
+                            String entryText = msg.getString();
                             if (entryText.toLowerCase().contains(target)) {
                                 int cx = ew.getX() + ew.getWidth() / 2;
                                 int cy = ew.getY() + ew.getHeight() / 2;
@@ -977,7 +975,7 @@ public final class McpServer {
             java.util.List<?> sub = com.iafenvoy.pendulum.api.GuiAPI.tryGetChildren(child);
             if (sub != null) {
                 String result = selectListItemRecursive(sub, target);
-                if (result != null && result.contains("\"selected\":true")) return result;
+                if (result.contains("\"selected\":true")) return result;
             }
         }
         return "{\"error\":\"list item not found: " + target + "\"}";
@@ -997,7 +995,7 @@ public final class McpServer {
                     obj.addProperty("width", w.getWidth());
                     obj.addProperty("height", w.getHeight());
                     net.minecraft.network.chat.Component msg = w.getMessage();
-                    if (msg != null) obj.addProperty("text", msg.getString());
+                    obj.addProperty("text", msg.getString());
                 }
                 arr.add(obj);
             }
@@ -1031,7 +1029,7 @@ public final class McpServer {
             if (p.required) required.add(p.name);
         }
         schema.add("properties", props);
-        if (required.size() > 0) schema.add("required", required);
+        if (!required.isEmpty()) schema.add("required", required);
         return schema;
     }
 

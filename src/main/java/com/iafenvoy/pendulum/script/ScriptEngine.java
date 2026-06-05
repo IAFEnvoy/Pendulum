@@ -409,7 +409,7 @@ public final class ScriptEngine {
                 this.running = false;
                 this.currentSource = null;
                 this.mcpLogCapture = null;
-                if (logOutput.length() > 0) {
+                if (!logOutput.isEmpty()) {
                     String logStr = logOutput.toString();
                     if ("undefined".equals(output) || output == null) {
                         output = logStr;

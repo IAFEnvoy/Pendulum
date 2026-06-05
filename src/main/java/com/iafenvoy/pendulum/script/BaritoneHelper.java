@@ -1,8 +1,6 @@
 package com.iafenvoy.pendulum.script;
 
 import com.mojang.logging.LogUtils;
-import net.minecraft.client.Minecraft;
-import net.minecraft.core.BlockPos;
 import org.slf4j.Logger;
 
 import java.lang.reflect.Method;

@@ -37,43 +37,21 @@ public final class PendulumAPI {
 
     /**
      * Check if a mod is loaded by its mod ID.
-     * Works across Fabric, Forge, and NeoForge via reflection.
      *
-     * @param modId e.g. "sodium", "iris", "jei", "baritone"
+     * @param args e.g. "sodium", "iris", "jei", "baritone"
      * @return true if the mod is present in the current mod list
      */
     public static boolean isModLoaded(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         String modId = cx.toString(args[0]);
-        // 1) Fabric Loader
-        try {
-            Class<?> fl = Class.forName("net.fabricmc.loader.api.FabricLoader");
-            Object inst = fl.getMethod("getInstance").invoke(null);
-            return (boolean) inst.getClass().getMethod("isModLoaded", String.class).invoke(inst, modId);
-        } catch (ClassNotFoundException ignored) {
-        } catch (Exception e) {
-            LOGGER.warn("isModLoaded: Fabric check failed — {}", e.getMessage());
-        }
-        // 2) Forge Loader
-        try {
-            Class<?> fml = Class.forName("net.minecraftforge.fml.loading.FMLLoader");
-            Object modList = fml.getMethod("getLoadingModList").invoke(null);
-            Object modFile = modList.getClass().getMethod("getModFileById", String.class).invoke(modList, modId);
-            return modFile != null;
-        } catch (ClassNotFoundException ignored) {
-        } catch (Exception e) {
-            LOGGER.warn("isModLoaded: Forge check failed — {}", e.getMessage());
-        }
-        // 3) NeoForge Loader
-        try {
-            Class<?> fml = Class.forName("net.neoforged.fml.loading.FMLLoader");
-            Object modList = fml.getMethod("getLoadingModList").invoke(null);
-            Object modFile = modList.getClass().getMethod("getModFileById", String.class).invoke(modList, modId);
-            return modFile != null;
-        } catch (ClassNotFoundException ignored) {
-        } catch (Exception e) {
-            LOGGER.warn("isModLoaded: NeoForge check failed — {}", e.getMessage());
-        }
-        return false;
+        //? fabric {
+        return net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded(modId);
+        //?} else forge {
+        // return net.minecraftforge.fml.ModList.get().isLoaded(modId);
+        //?} else neoforge {
+        // return net.neoforged.fml.ModList.get().isLoaded(modId);
+        //?} else {
+        // return false;
+        //?}
     }
 
     // ==================== Config Permissions ====================
@@ -90,34 +68,21 @@ public final class PendulumAPI {
     public static Object getPermission(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
         String key = cx.toString(args[0]);
         return ScriptEngine.submitToGameThread(() -> {
-            switch (key) {
-                case "allowBreak":
-                    return PendulumConfig.INSTANCE.allowBreak.getValue();
-                case "allowPlace":
-                    return PendulumConfig.INSTANCE.allowPlace.getValue();
-                case "allowAttack":
-                    return PendulumConfig.INSTANCE.allowAttack.getValue();
-                case "allowExecuteCommand":
-                    return PendulumConfig.INSTANCE.allowExecuteCommand.getValue();
-                case "allowSay":
-                    return PendulumConfig.INSTANCE.allowSay.getValue();
-                case "mcpEnabled":
-                    return PendulumConfig.INSTANCE.mcpEnabled.getValue();
-                case "syncUseAttack":
-                    return PendulumConfig.INSTANCE.syncUseAttack.getValue();
-                case "logJsErrors":
-                    return PendulumConfig.INSTANCE.logJsErrors.getValue();
-                case "breakTimeout":
-                    return PendulumConfig.INSTANCE.breakTimeout.getValue();
-                case "rayTraceDistance":
-                    return PendulumConfig.INSTANCE.rayTraceDistance.getValue();
-                case "tickIntervalMs":
-                    return PendulumConfig.INSTANCE.tickIntervalMs.getValue();
-                case "mcpPort":
-                    return PendulumConfig.INSTANCE.mcpPort.getValue();
-                default:
-                    return null;
-            }
+            return switch (key) {
+                case "allowBreak" -> PendulumConfig.INSTANCE.allowBreak.getValue();
+                case "allowPlace" -> PendulumConfig.INSTANCE.allowPlace.getValue();
+                case "allowAttack" -> PendulumConfig.INSTANCE.allowAttack.getValue();
+                case "allowExecuteCommand" -> PendulumConfig.INSTANCE.allowExecuteCommand.getValue();
+                case "allowSay" -> PendulumConfig.INSTANCE.allowSay.getValue();
+                case "mcpEnabled" -> PendulumConfig.INSTANCE.mcpEnabled.getValue();
+                case "syncUseAttack" -> PendulumConfig.INSTANCE.syncUseAttack.getValue();
+                case "logJsErrors" -> PendulumConfig.INSTANCE.logJsErrors.getValue();
+                case "breakTimeout" -> PendulumConfig.INSTANCE.breakTimeout.getValue();
+                case "rayTraceDistance" -> PendulumConfig.INSTANCE.rayTraceDistance.getValue();
+                case "tickIntervalMs" -> PendulumConfig.INSTANCE.tickIntervalMs.getValue();
+                case "mcpPort" -> PendulumConfig.INSTANCE.mcpPort.getValue();
+                default -> null;
+            };
         });
     }
 
@@ -127,7 +92,7 @@ public final class PendulumAPI {
         LOGGER.info("[Pendulum JS] {}", msg);
         StringBuilder capture = ScriptEngine.getInstance().mcpLogCapture;
         if (capture != null) {
-            if (capture.length() > 0) capture.append("\n");
+            if (!capture.isEmpty()) capture.append("\n");
             capture.append("[").append(level).append("] ").append(msg);
         }
     }

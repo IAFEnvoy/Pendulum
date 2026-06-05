@@ -635,7 +635,7 @@ public final class MinecraftAPI {
         return ScriptEngine.submitToGameThread(() -> {
             if (MC.screen == null) return "";
             Component title = MC.screen.getTitle();
-            return title != null ? title.getString() : "";
+            return title.getString();
         });
     }
 
@@ -762,7 +762,7 @@ public final class MinecraftAPI {
             if (MC.screen == null) return results;
             for (var child : MC.screen.children()) {
                 Scriptable obj = buildGuiElementObject(cx, thisObj, child);
-                if (obj != null) results.put(cx, results.size(), results, obj);
+                results.put(cx, results.size(), results, obj);
             }
             return results;
         });
@@ -778,7 +778,7 @@ public final class MinecraftAPI {
             obj.put(cx, "width", obj, w.getWidth());
             obj.put(cx, "height", obj, w.getHeight());
             net.minecraft.network.chat.Component msg = w.getMessage();
-            if (msg != null) obj.put(cx, "text", obj, msg.getString());
+            obj.put(cx, "text", obj, msg.getString());
         }
         return obj;
     }

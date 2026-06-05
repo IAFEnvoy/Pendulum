@@ -7,6 +7,7 @@ import net.minecraft.client.gui.components.AbstractSelectionList;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import dev.latvian.mods.rhino.Context;
@@ -63,9 +64,7 @@ public final class GuiAPI {
     }
 
     public static void openChat(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-        ScriptEngine.submitToGameThread(() -> {
-            MC.setScreen(new ChatScreen(""));
-        });
+        ScriptEngine.submitToGameThread(() -> MC.setScreen(new ChatScreen("")));
     }
 
     // ==================== Widget Enumeration (recursive) ====================
@@ -80,7 +79,7 @@ public final class GuiAPI {
             if (MC.screen == null) return results;
             for (var child : MC.screen.children()) {
                 Scriptable obj = buildWidgetObject(cx, thisObj, child, true);
-                if (obj != null) results.put(cx, results.size(), results, obj);
+                results.put(cx, results.size(), results, obj);
             }
             return results;
         });
@@ -100,7 +99,7 @@ public final class GuiAPI {
             obj.put(cx, "width", obj, w.getWidth());
             obj.put(cx, "height", obj, w.getHeight());
             Component msg = w.getMessage();
-            if (msg != null) obj.put(cx, "text", obj, msg.getString());
+            obj.put(cx, "text", obj, msg.getString());
             obj.put(cx, "active", obj, w.active);
             obj.put(cx, "focused", obj, w.isFocused());
         }
@@ -112,9 +111,9 @@ public final class GuiAPI {
                 NativeArray childArr = (NativeArray) cx.newArray(scope, 0);
                 for (Object child : list) {
                     Scriptable childObj = buildWidgetObject(cx, scope, child, true);
-                    if (childObj != null) childArr.put(cx, childArr.size(), childArr, childObj);
+                    childArr.put(cx, childArr.size(), childArr, childObj);
                 }
-                if (childArr.size() > 0) obj.put(cx, "children", obj, childArr);
+                if (!childArr.isEmpty()) obj.put(cx, "children", obj, childArr);
             }
         }
 
@@ -168,7 +167,7 @@ public final class GuiAPI {
             // Check text via AbstractWidget.getMessage()
             if (child instanceof AbstractWidget w) {
                 Component msg = w.getMessage();
-                if (msg != null && msg.getString().toLowerCase().contains(lower)) return child;
+                if (msg.getString().toLowerCase().contains(lower)) return child;
             }
             // Check type name
             if (child.getClass().getSimpleName().toLowerCase().contains(lower)) return child;
@@ -212,15 +211,7 @@ public final class GuiAPI {
      * gui.pasteText(text, pressEnter?) - paste text (types quickly).
      */
     public static void pasteText(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-        String text = cx.toString(args[0]);
-        boolean pressEnter = args.length > 1 && cx.toBoolean(args[1]);
-        new Thread(() -> {
-            ScreenInputHelper.typeText(text);
-            if (pressEnter) {
-                try { Thread.sleep(50); } catch (InterruptedException ignored) {}
-                ScreenInputHelper.pressKey("ENTER", 0f);
-            }
-        }).start();
+        typeText(cx, thisObj, args, funObj);// FIXME::Duplicate API
     }
 
     /**
@@ -461,7 +452,7 @@ public final class GuiAPI {
                     for (Object entry : entries) {
                         if (entry instanceof AbstractWidget ew) {
                             Component msg = ew.getMessage();
-                            String entryText = msg != null ? msg.getString() : "";
+                            String entryText = msg.getString();
                             if (entryText.toLowerCase().contains(target)) {
                                 int cx = ew.getX() + ew.getWidth() / 2;
                                 int cy = ew.getY() + ew.getHeight() / 2;
@@ -475,7 +466,7 @@ public final class GuiAPI {
             java.util.List<?> sub = tryGetChildren(child);
             if (sub != null) {
                 String result = selectListItemRecursive(sub, target);
-                if (result != null && result.contains("\"selected\":true")) return result;
+                if (result.contains("\"selected\":true")) return result;
             }
         }
         return "{\"error\":\"list item not found: " + target + "\"}";
@@ -486,7 +477,7 @@ public final class GuiAPI {
     static Scriptable itemStackToObject(Context cx, Scriptable scope, ItemStack stack) {
         if (stack == null || stack.isEmpty()) return null;
         Scriptable obj = cx.newObject(scope);
-        obj.put(cx, "id", obj, net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+        obj.put(cx, "id", obj, BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
         obj.put(cx, "count", obj, stack.getCount());
         obj.put(cx, "maxCount", obj, stack.getMaxStackSize());
         obj.put(cx, "durability", obj, stack.getDamageValue());

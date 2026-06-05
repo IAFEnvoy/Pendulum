@@ -1,6 +1,7 @@
 package com.iafenvoy.pendulum.util;
 
 import com.mojang.logging.LogUtils;
+import com.sun.jna.platform.win32.User32;
 import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
 
@@ -226,7 +227,7 @@ public final class ScreenInputHelper {
                 if (vk > 0) {
                     Class<?> user32 = Class.forName("com.sun.jna.platform.win32.User32");
                     Object instance = user32.getField("INSTANCE").get(null);
-                    user32.getMethod("PostMessageW", long.class, int.class, long.class, long.class)
+                    user32.getMethod("PostMessage", long.class, int.class, long.class, long.class)
                             .invoke(instance, handle, action == 1 ? 0x0100 : 0x0101, (long) vk, 0L);
                     return;
                 }
@@ -239,11 +240,22 @@ public final class ScreenInputHelper {
     private static int glfwToWin32Vk(int k) {
         if (k >= 65 && k <= 90) return k;
         if (k >= 48 && k <= 57) return k;
-        switch (k) { case 256: return 0x1B; case 257: return 0x0D; case 258: return 0x09;
-            case 259: return 0x08; case 261: return 0x2E; case 262: return 0x27;
-            case 263: return 0x25; case 264: return 0x28; case 265: return 0x26;
-            case 32: return 0x20; case 340: case 344: return 0x10; case 341: case 345: return 0x11;
-            case 342: case 346: return 0x12; default: return -1; }
+        return switch (k) {
+            case 256 -> 0x1B;
+            case 257 -> 0x0D;
+            case 258 -> 0x09;
+            case 259 -> 0x08;
+            case 261 -> 0x2E;
+            case 262 -> 0x27;
+            case 263 -> 0x25;
+            case 264 -> 0x28;
+            case 265 -> 0x26;
+            case 32 -> 0x20;
+            case 340, 344 -> 0x10;
+            case 341, 345 -> 0x11;
+            case 342, 346 -> 0x12;
+            default -> -1;
+        };
     }
 
     /**
@@ -294,10 +306,20 @@ public final class ScreenInputHelper {
         if (c >= 'a' && c <= 'z') return (c - 'a') + 65;
         if (c >= 'A' && c <= 'Z') return (c - 'A') + 65;
         if (c >= '0' && c <= '9') return (c - '0') + 48;
-        switch (c) { case ' ': return 32; case '-': return 45; case '=': return 61;
-            case '[': return 91; case ']': return 93; case '\\': return 92;
-            case ';': return 59; case '\'': return 39; case ',': return 44;
-            case '.': return 46; case '/': return 47; default: return -1; }
+        return switch (c) {
+            case ' ' -> 32;
+            case '-' -> 45;
+            case '=' -> 61;
+            case '[' -> 91;
+            case ']' -> 93;
+            case '\\' -> 92;
+            case ';' -> 59;
+            case '\'' -> 39;
+            case ',' -> 44;
+            case '.' -> 46;
+            case '/' -> 47;
+            default -> -1;
+        };
     }
 
     // ==================== Direct access (Mojang mappings: mouseHandler/keyboardHandler are public) ====================
@@ -450,36 +472,22 @@ public final class ScreenInputHelper {
     private static int glfwToAwtKey(int glfwKey) {
         if (glfwKey >= 65 && glfwKey <= 90) return glfwKey; // A-Z
         if (glfwKey >= 48 && glfwKey <= 57) return glfwKey; // 0-9
-        switch (glfwKey) {
-            case 256:
-                return KeyEvent.VK_ESCAPE;
-            case 257:
-                return KeyEvent.VK_ENTER;
-            case 258:
-                return KeyEvent.VK_TAB;
-            case 259:
-                return KeyEvent.VK_BACK_SPACE;
-            case 261:
-                return KeyEvent.VK_DELETE;
-            case 262:
-                return KeyEvent.VK_RIGHT;
-            case 263:
-                return KeyEvent.VK_LEFT;
-            case 264:
-                return KeyEvent.VK_DOWN;
-            case 265:
-                return KeyEvent.VK_UP;
-            case 32:
-                return KeyEvent.VK_SPACE;
-            case 340:
-                return KeyEvent.VK_SHIFT;
-            case 341:
-                return KeyEvent.VK_CONTROL;
-            case 342:
-                return KeyEvent.VK_ALT;
-            default:
-                return -1;
-        }
+        return switch (glfwKey) {
+            case 256 -> KeyEvent.VK_ESCAPE;
+            case 257 -> KeyEvent.VK_ENTER;
+            case 258 -> KeyEvent.VK_TAB;
+            case 259 -> KeyEvent.VK_BACK_SPACE;
+            case 261 -> KeyEvent.VK_DELETE;
+            case 262 -> KeyEvent.VK_RIGHT;
+            case 263 -> KeyEvent.VK_LEFT;
+            case 264 -> KeyEvent.VK_DOWN;
+            case 265 -> KeyEvent.VK_UP;
+            case 32 -> KeyEvent.VK_SPACE;
+            case 340 -> KeyEvent.VK_SHIFT;
+            case 341 -> KeyEvent.VK_CONTROL;
+            case 342 -> KeyEvent.VK_ALT;
+            default -> -1;
+        };
     }
 
     private static int charToAwtKey(char c) {

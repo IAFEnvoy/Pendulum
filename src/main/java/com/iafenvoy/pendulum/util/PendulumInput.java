@@ -2,7 +2,6 @@ package com.iafenvoy.pendulum.util;
 
 import com.iafenvoy.pendulum.script.PlayerSimulator;
 import net.minecraft.client.player.Input;
-import net.minecraft.client.player.LocalPlayer;
 
 /**
  * Custom Input implementation, based on Baritone's PlayerMovementInput.

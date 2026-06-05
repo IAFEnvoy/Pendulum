@@ -722,22 +722,23 @@ public final class BaritoneAPI {
     // ==================== Help ====================
 
     public static void help(Context cx, Scriptable thisObj, Object[] args, Function funObj) {
-        String msg = "§6=== Baritone (br) Complete API ===\n" +
-                "§eMovement/Pathing:§r goto, goal, path, come, axis, thisWay, surface, elytra\n" +
-                "§eMining:§r mine, tunnel\n" +
-                "§eFollow:§r follow, pickup\n" +
-                "§eFarm:§r farm  Explore:§r explore  Invert:§r invert\n" +
-                "§eMoveToBlock:§r getToBlock\n" +
-                "§eBuild:§r build, litematica\n" +
-                "§eInteraction:§r click\n" +
-                "§eControl:§r stop, cancel, forceCancel, pause, resume, isActive, isPaused, paused\n" +
-                "§eCommand:§r command\n" +
-                "§eSettings:§r setting\n" +
-                "§eSelection:§r selPos1, selPos2, select, clearSelection\n" +
-                "§eInfo:§r find, proc, eta, version  Blacklist:§r blacklist\n" +
-                "§eWaypoints:§r waypointSave, waypointList, waypointDelete  Home:§r sethome, home\n" +
-                "§eTools:§r repack, gc, render, reloadAll, saveAll\n" +
-                "§cTip: Use Baritone (br.*) whenever possible! Path planning, mining, and building are far more efficient than per-block operations.";
+        String msg = """
+                §6=== Baritone (br) Complete API ===
+                §eMovement/Pathing:§r goto, goal, path, come, axis, thisWay, surface, elytra
+                §eMining:§r mine, tunnel
+                §eFollow:§r follow, pickup
+                §eFarm:§r farm  Explore:§r explore  Invert:§r invert
+                §eMoveToBlock:§r getToBlock
+                §eBuild:§r build, litematica
+                §eInteraction:§r click
+                §eControl:§r stop, cancel, forceCancel, pause, resume, isActive, isPaused, paused
+                §eCommand:§r command
+                §eSettings:§r setting
+                §eSelection:§r selPos1, selPos2, select, clearSelection
+                §eInfo:§r find, proc, eta, version  Blacklist:§r blacklist
+                §eWaypoints:§r waypointSave, waypointList, waypointDelete  Home:§r sethome, home
+                §eTools:§r repack, gc, render, reloadAll, saveAll
+                §cTip: Use Baritone (br.*) whenever possible! Path planning, mining, and building are far more efficient than per-block operations.""";
         if (Minecraft.getInstance().player != null) {
             Minecraft.getInstance().player.displayClientMessage(
                     net.minecraft.network.chat.Component.literal(msg), false);
