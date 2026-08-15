@@ -27,15 +27,7 @@ For detailed documentation, see the [Documentation](https://docs.iafenvoy.com/do
 
 ### 🤖 For AI Agents 
 
-- **MCP JSON-RPC 2.0 over TCP** — native AI agent integration
-- **`script/eval`** — execute arbitrary JS and return results
-- **`script/status`** / **`script/abort`** — manage script state
-- **`gui/enumerateWidgets`** — full recursive widget tree
-- **`gui/guiElements`** — read all visible GUI controls
-- **`gui/screenshot`** — capture the game view
-- **`simulate/click`** / **`gui/clickButton`** — click GUI elements
-- **`simulate/typeText`** / **`simulate/pressKey`** — keyboard input
-- Compatible with VS Code Copilot, Claude Desktop, and any MCP client
+There are 2 mods for agents to control Pendulum: Data Mode and Visual Mode. Data Mode provides JavaScript APIs for direct control, while Visual Mode allows agents to interact with the game through screenshots and simulated input.
 
 ## Quick Start
 
@@ -44,7 +36,7 @@ For detailed documentation, see the [Documentation](https://docs.iafenvoy.com/do
 /pendulum execute mc.player.forward(20)
 
 // Mine all pumpkins nearby
-/pendulum execute for(let p of mc.world.findBlocks('minecraft:pumpkin',8)){ mc.player.breakBlockAt(p.x,p.y,p.z) }
+/pendulum execute for(let p of mc.world.findBlocks('minecraft:pumpkin',4)){ mc.player.breakBlockAt(p.x,p.y,p.z) }
 
 // Run a script file
 /pendulum file farm.js

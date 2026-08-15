@@ -108,21 +108,11 @@ publishMods {
     changelog = provider { rootProject.file("CHANGELOG.md").readText() }
     modLoaders.addAll("neoforge", "fabric")
 
-    modrinth {
-        projectId = property("publish.modrinth") as String
-        accessToken = env.MODRINTH_API_KEY.orNull()
-        minecraftVersions.addAll(supportedMinecraftVersions)
-        optional("cloth-config")
-        optional("forge-config-api-port")
-        optional("fabric-api")
-    }
-
     curseforge {
         projectId = property("publish.curseforge") as String
         accessToken = env.CURSEFORGE_API_KEY.orNull()
         minecraftVersions.addAll(supportedMinecraftVersions)
-        optional("cloth-config")
-        optional("forge-config-api-port")
         optional("fabric-api")
+        clientRequired = true
     }
 }

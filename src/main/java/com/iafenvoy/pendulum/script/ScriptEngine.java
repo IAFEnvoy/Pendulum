@@ -15,6 +15,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import dev.latvian.mods.rhino.*;
 import org.slf4j.Logger;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -71,58 +73,43 @@ public final class ScriptEngine {
             //?}
             this.scope = cx.initStandardObjects();
             ScriptableObject mcObj = (ScriptableObject) cx.newObject(this.scope);
-            mcObj.defineFunctionProperties(
-                    cx,
-                    MinecraftAPI.FUNCTION_NAMES.toArray(new String[0]),
-                    MinecraftAPI.class, ScriptableObject.DONTENUM);
+            defineApiFunctions(cx, mcObj,
+                    MinecraftAPI.FUNCTION_NAMES.toArray(new String[0]), MinecraftAPI.class);
             ScriptableObject.putProperty(this.scope, "minecraft", mcObj, cx);
             ScriptableObject.putProperty(this.scope, "game", mcObj, cx);
             ScriptableObject.putProperty(this.scope, "mc", mcObj, cx);
 
             // mc.player sub-object — movement, rotation, interaction, player state
             ScriptableObject playerObj = (ScriptableObject) cx.newObject(this.scope);
-            playerObj.defineFunctionProperties(
-                    cx,
-                    PlayerAPI.FUNCTION_NAMES.toArray(new String[0]),
-                    MinecraftAPI.class, ScriptableObject.DONTENUM);
+            defineApiFunctions(cx, playerObj,
+                    PlayerAPI.FUNCTION_NAMES.toArray(new String[0]), MinecraftAPI.class);
             ScriptableObject.putProperty(mcObj, "player", playerObj, cx);
 
             // mc.world sub-object — block/entity/environment queries
             ScriptableObject worldObj = (ScriptableObject) cx.newObject(this.scope);
-            worldObj.defineFunctionProperties(
-                    cx,
-                    WorldAPI.FUNCTION_NAMES.toArray(new String[0]),
-                    MinecraftAPI.class, ScriptableObject.DONTENUM);
+            defineApiFunctions(cx, worldObj,
+                    WorldAPI.FUNCTION_NAMES.toArray(new String[0]), MinecraftAPI.class);
             ScriptableObject.putProperty(mcObj, "world", worldObj, cx);
 
             // mc.inv sub-object — inventory & container
             ScriptableObject invObj = (ScriptableObject) cx.newObject(this.scope);
-            invObj.defineFunctionProperties(
-                    cx,
-                    InventoryAPI.FUNCTION_NAMES.toArray(new String[0]),
-                    MinecraftAPI.class, ScriptableObject.DONTENUM);
+            defineApiFunctions(cx, invObj,
+                    InventoryAPI.FUNCTION_NAMES.toArray(new String[0]), MinecraftAPI.class);
             ScriptableObject.putProperty(mcObj, "inv", invObj, cx);
 
             // mc.gui sub-object — screen interaction & container operations
             ScriptableObject guiObj = (ScriptableObject) cx.newObject(this.scope);
-            guiObj.defineFunctionProperties(
-                    cx,
-                    GuiAPI.FUNCTION_NAMES.toArray(new String[0]),
-                    GuiAPI.class, ScriptableObject.DONTENUM);
+            defineApiFunctions(cx, guiObj,
+                    GuiAPI.FUNCTION_NAMES.toArray(new String[0]), GuiAPI.class);
             ScriptableObject.putProperty(mcObj, "gui", guiObj, cx);
 
             // baritone object (optional; always registered, checked on call)
             ScriptableObject brObj = (ScriptableObject) cx.newObject(this.scope);
-            brObj.defineFunctionProperties(
-                    cx,
-                    BaritoneAPI.FUNCTION_NAMES.toArray(new String[0]),
-                    BaritoneAPI.class, ScriptableObject.DONTENUM);
+            defineApiFunctions(cx, brObj,
+                    BaritoneAPI.FUNCTION_NAMES.toArray(new String[0]), BaritoneAPI.class);
             // goto is a Java reserved word; bind manually
             //? if >=1.21 {
-            /*java.lang.reflect.Method gotoMethod = BaritoneAPI.class.getMethod("goto_", Context.class, Scriptable.class, Object[].class, Function.class);
-            dev.latvian.mods.rhino.CachedClassStorage storage = cx.getCachedClassStorage(true);
-            dev.latvian.mods.rhino.CachedClassInfo info = storage.get(BaritoneAPI.class);
-            brObj.put(cx, "goto", brObj, new FunctionObject("goto", new dev.latvian.mods.rhino.CachedExecutableInfo(info, gotoMethod), brObj, cx));
+            /*defineApiFunction(cx, brObj, "goto", BaritoneAPI.class, "goto_");
             *///?} else {
             brObj.put(cx, "goto", brObj,
                     new FunctionObject("goto",
@@ -133,14 +120,14 @@ public final class ScriptEngine {
             ScriptableObject.putProperty(this.scope, "br", brObj, cx);
 
             ScriptableObject consoleObj = (ScriptableObject) cx.newObject(this.scope);
-            consoleObj.defineFunctionProperties(cx, new String[]{"log"}, MinecraftAPI.class, ScriptableObject.DONTENUM);
+            defineApiFunctions(cx, consoleObj, new String[]{"log"}, MinecraftAPI.class);
             ScriptableObject.putProperty(this.scope, "console", consoleObj, cx);
 
             // pendulum.* — config & logging, captured to MCP return (see PendulumAPI.java)
             ScriptableObject pendulumObj = (ScriptableObject) cx.newObject(this.scope);
-            pendulumObj.defineFunctionProperties(cx,
+            defineApiFunctions(cx, pendulumObj,
                     new String[]{"log", "warn", "error", "isModLoaded", "getPermission"},
-                    PendulumAPI.class, ScriptableObject.DONTENUM);
+                    PendulumAPI.class);
             ScriptableObject.putProperty(this.scope, "pendulum", pendulumObj, cx);
             this.initialized = true;
             LOGGER.info("Pendulum ScriptEngine initialized.");
@@ -148,6 +135,47 @@ public final class ScriptEngine {
             LOGGER.error("Failed to initialize", e);
         }
     }
+
+    private static void defineApiFunctions(Context cx, ScriptableObject target, String[] names, Class<?> owner)
+            throws NoSuchMethodException {
+        //? if >=1.21 {
+        /*for (String name : names) {
+            defineApiFunction(cx, target, name, owner, name);
+        }
+        *///?} else {
+        target.defineFunctionProperties(cx, names, owner, ScriptableObject.DONTENUM);
+        //?}
+    }
+
+    // Rhino 2101.2.7 strips Context from cached parameter lists before FunctionObject validates them.
+    //? if >=1.21 {
+    /*private static void defineApiFunction(Context cx, ScriptableObject target, String exposedName,
+                                          Class<?> owner, String methodName) throws NoSuchMethodException {
+        Method method = owner.getMethod(
+                methodName, Context.class, Scriptable.class, Object[].class, Function.class);
+        boolean returnsVoid = method.getReturnType() == Void.TYPE;
+        BaseFunction function = new BaseFunction() {
+            @Override
+            public String getFunctionName() {
+                return exposedName;
+            }
+
+            @Override
+            public Object call(Context callCx, Scriptable scope, Scriptable thisObj, Object[] args) {
+                try {
+                    Object result = method.invoke(null, callCx, thisObj, args, this);
+                    return returnsVoid ? Undefined.INSTANCE : result;
+                } catch (InvocationTargetException e) {
+                    throw Context.throwAsScriptRuntimeEx(e.getCause(), callCx);
+                } catch (ReflectiveOperationException e) {
+                    throw Context.throwAsScriptRuntimeEx(e, callCx);
+                }
+            }
+        };
+        ScriptRuntime.setFunctionProtoAndParent(cx, target, function);
+        target.defineProperty(cx, exposedName, function, ScriptableObject.DONTENUM);
+    }
+    *///?}
 
     // ==================== Game Thread Task Submission ====================
 
