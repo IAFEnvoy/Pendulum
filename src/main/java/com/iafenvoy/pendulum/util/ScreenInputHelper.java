@@ -1,5 +1,6 @@
 package com.iafenvoy.pendulum.util;
 
+import com.iafenvoy.pendulum.script.ScriptEngine;
 import com.mojang.logging.LogUtils;
 import com.sun.jna.platform.win32.User32;
 import net.minecraft.client.Minecraft;
@@ -24,11 +25,47 @@ public final class ScreenInputHelper {
             awtRobot = new Robot();
             awtRobot.setAutoDelay(5);
         } catch (AWTException e) {
-            LOGGER.error("[Pendulum] AWT Robot unavailable", e);
+            // Usually a headless JVM — the GLFW path is preferred anyway, so the AWT fallback is optional.
+            LOGGER.debug("[Pendulum] AWT Robot unavailable, AWT fallback disabled: {}", e.getMessage());
         }
     }
 
     private ScreenInputHelper() {
+    }
+
+    // ==================== Thread marshalling ====================
+
+    /**
+     * All Minecraft input handling (keyboardHandler/mouseHandler callbacks, {@code setScreen},
+     * GL state) is render-thread only. Injecting a key from the MCP/JS threads makes
+     * {@code Minecraft.setScreen} throw after it has already assigned {@code this.screen} but
+     * before {@code Screen.init()} ran, so the screen is rendered with a null {@code minecraft}
+     * field and the game crashes in {@code Screen.renderBackground} (issue #2).
+     * Waits for the task to finish on the game thread.
+     */
+    private static void onGameThread(Runnable task) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.isSameThread()) task.run();
+        else ScriptEngine.submitToGameThread(task);
+    }
+
+    /**
+     * Same as {@link #onGameThread} but does not block for a game tick. The task queue is FIFO,
+     * so ordering is kept; used for ordered bursts (typing) where one tick per key event would
+     * make it needlessly slow.
+     */
+    private static void onGameThreadLater(Runnable task) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.isSameThread()) task.run();
+        else ScriptEngine.runOnGameThread(task);
+    }
+
+    private static void sleep(long millis) {
+        if (millis <= 0) return;
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ignored) {
+        }
     }
 
     // ==================== Mouse ====================
@@ -40,6 +77,10 @@ public final class ScreenInputHelper {
      * @param action 1=press, 0=release
      */
     public static void injectMouseButton(int button, int action) {
+        onGameThread(() -> injectMouseButtonNow(button, action));
+    }
+
+    private static void injectMouseButtonNow(int button, int action) {
         Minecraft mc = Minecraft.getInstance();
         long handle = mc.getWindow().getWindow();
 
@@ -82,34 +123,34 @@ public final class ScreenInputHelper {
      * @param button 0=left, 1=right, 2=middle
      */
     public static void clickAt(int x, int y, int button) {
-        Minecraft mc = Minecraft.getInstance();
-        long handle = mc.getWindow().getWindow();
-
-        // Move cursor via GLFW
-        if (handle != 0) {
-            try {
-                Class<?> glfwClass = Class.forName("org.lwjgl.glfw.GLFW");
-                Method setPos = glfwClass.getMethod("glfwSetCursorPos", long.class, double.class, double.class);
-                setPos.invoke(null, handle, (double) x, (double) y);
-            } catch (Exception e) {
-                // Fall back to AWT
-                Robot r = awtRobot;
-                if (r != null) r.mouseMove(x, y);
-            }
-        }
+        moveCursor(x, y);
 
         // Small delay for the game to process cursor move
-        try {
-            Thread.sleep(30);
-        } catch (InterruptedException ignored) {
-        }
+        sleep(30);
 
         injectMouseButton(button, 1);
-        try {
-            Thread.sleep(30);
-        } catch (InterruptedException ignored) {
-        }
+        sleep(30);
         injectMouseButton(button, 0);
+    }
+
+    private static void moveCursor(int x, int y) {
+        onGameThread(() -> {
+            Minecraft mc = Minecraft.getInstance();
+            long handle = mc.getWindow().getWindow();
+
+            // Move cursor via GLFW
+            if (handle != 0) {
+                try {
+                    Class<?> glfwClass = Class.forName("org.lwjgl.glfw.GLFW");
+                    Method setPos = glfwClass.getMethod("glfwSetCursorPos", long.class, double.class, double.class);
+                    setPos.invoke(null, handle, (double) x, (double) y);
+                } catch (Exception e) {
+                    // Fall back to AWT
+                    Robot r = awtRobot;
+                    if (r != null) r.mouseMove(x, y);
+                }
+            }
+        });
     }
 
     /**
@@ -124,20 +165,8 @@ public final class ScreenInputHelper {
         for (int i = 1; i <= steps; i++) {
             int cx = x1 + (x2 - x1) * i / steps;
             int cy = y1 + (y2 - y1) * i / steps;
-            Minecraft mc = Minecraft.getInstance();
-            long handle = mc.getWindow().getWindow();
-            if (handle != 0) {
-                try {
-                    Class<?> glfwClass = Class.forName("org.lwjgl.glfw.GLFW");
-                    Method setPos = glfwClass.getMethod("glfwSetCursorPos", long.class, double.class, double.class);
-                    setPos.invoke(null, handle, (double) cx, (double) cy);
-                } catch (Exception ignored) {
-                }
-            }
-            try {
-                Thread.sleep(10);
-            } catch (InterruptedException ignored) {
-            }
+            moveCursor(cx, cy);
+            sleep(10);
         }
         injectMouseButton(button, 0);
     }
@@ -148,6 +177,10 @@ public final class ScreenInputHelper {
      * @param clicks positive=up, negative=down
      */
     public static void scroll(int clicks) {
+        onGameThread(() -> scrollNow(clicks));
+    }
+
+    private static void scrollNow(int clicks) {
         Minecraft mc = Minecraft.getInstance();
         long handle = mc.getWindow().getWindow();
 
@@ -193,17 +226,29 @@ public final class ScreenInputHelper {
             return;
         }
 
-        Minecraft mc = Minecraft.getInstance();
-        long handle = mc.getWindow().getWindow();
+        // Force window focus first, then let it settle (off the render thread).
+        focusWindow();
+        sleep(30);
 
-        // Force window focus first
-        if (handle != 0) {
+        onGameThread(() -> injectKeyNow(keyName, glfwKey, action));
+    }
+
+    private static void focusWindow() {
+        onGameThread(() -> {
+            Minecraft mc = Minecraft.getInstance();
+            long handle = mc.getWindow().getWindow();
+            if (handle == 0) return;
             try {
                 Class<?> glfw = Class.forName("org.lwjgl.glfw.GLFW");
                 glfw.getMethod("glfwFocusWindow", long.class).invoke(null, handle);
-                try { Thread.sleep(30); } catch (InterruptedException ignored) {}
-            } catch (Exception ignored) {}
-        }
+            } catch (Exception ignored) {
+            }
+        });
+    }
+
+    private static void injectKeyNow(String keyName, int glfwKey, int action) {
+        Minecraft mc = Minecraft.getInstance();
+        long handle = mc.getWindow().getWindow();
 
         // Method 1: MC keyboardHandler.keyPress (preferred)
         if (handle != 0) {
@@ -217,7 +262,9 @@ public final class ScreenInputHelper {
                         return;
                     }
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                LOGGER.debug("[Pendulum] keyPress injection failed for {}", keyName, e);
+            }
         }
 
         // Method 2: Win32 PostMessage (sends WM_KEYDOWN/UP to MC window only)
@@ -231,7 +278,9 @@ public final class ScreenInputHelper {
                             .invoke(instance, handle, action == 1 ? 0x0100 : 0x0101, (long) vk, 0L);
                     return;
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                LOGGER.debug("[Pendulum] PostMessage key injection failed for {}", keyName, e);
+            }
         }
 
         LOGGER.warn("[Pendulum] Keyboard injection failed for key: {}", keyName);
@@ -263,9 +312,7 @@ public final class ScreenInputHelper {
      */
     public static void pressKey(String keyName, float holdSeconds) {
         injectKey(keyName, 1);
-        if (holdSeconds > 0) {
-            try { Thread.sleep((long) (holdSeconds * 1000)); } catch (InterruptedException ignored) {}
-        }
+        sleep((long) (holdSeconds * 1000));
         injectKey(keyName, 0);
     }
 
@@ -281,25 +328,32 @@ public final class ScreenInputHelper {
             boolean shift = Character.isUpperCase(c) || "!@#$%^&*()_+{}|:\"<>?~".indexOf(c) >= 0;
             if (shift) injectKey("LEFT_SHIFT", 1);
             injectKeyRaw(glfwKey, 1);
-            try { Thread.sleep(10); } catch (InterruptedException ignored) {}
+            sleep(10);
             injectKeyRaw(glfwKey, 0);
             if (shift) injectKey("LEFT_SHIFT", 0);
-            try { Thread.sleep(10); } catch (InterruptedException ignored) {}
+            sleep(10);
         }
     }
 
     private static void injectKeyRaw(int glfwKey, int action) {
-        Minecraft mc = Minecraft.getInstance();
-        long handle = mc.getWindow().getWindow();
-        if (handle != 0) {
-            try {
-                Object kb = getKeyboardHandler(mc);
-                if (kb != null) {
-                    Method m = findKeyPressMethod(kb.getClass());
-                    if (m != null) { m.setAccessible(true); m.invoke(kb, handle, glfwKey, 0, action, 0); }
+        onGameThreadLater(() -> {
+            Minecraft mc = Minecraft.getInstance();
+            long handle = mc.getWindow().getWindow();
+            if (handle != 0) {
+                try {
+                    Object kb = getKeyboardHandler(mc);
+                    if (kb != null) {
+                        Method m = findKeyPressMethod(kb.getClass());
+                        if (m != null) {
+                            m.setAccessible(true);
+                            m.invoke(kb, handle, glfwKey, 0, action, 0);
+                        }
+                    }
+                } catch (Exception e) {
+                    LOGGER.debug("[Pendulum] raw key injection failed for {}", glfwKey, e);
                 }
-            } catch (Exception ignored) {}
-        }
+            }
+        });
     }
 
     private static int charToGlfwKey(char c) {
