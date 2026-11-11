@@ -27,13 +27,16 @@ public final class Pendulum {
         ScriptEngine.getInstance().initialize();
 
         ScriptEngine.getInstance().setScriptEndListener(msg -> {
-            if (Minecraft.getInstance().player != null) {
-                Component prefix = Component.literal("§e[Pendulum] §r");
-                Component body = msg.startsWith("pendulum.")
-                        ? Component.translatable(msg)
-                        : Component.literal(msg);
-                Minecraft.getInstance().player.displayClientMessage(prefix.copy().append(body), false);
-            }
+            // Fired from the script thread — chat access belongs on the game thread.
+            ScriptEngine.runOnGameThread(() -> {
+                if (Minecraft.getInstance().player != null) {
+                    Component prefix = Component.literal("§e[Pendulum] §r");
+                    Component body = msg.startsWith("pendulum.")
+                            ? Component.translatable(msg)
+                            : Component.literal(msg);
+                    Minecraft.getInstance().player.displayClientMessage(prefix.copy().append(body), false);
+                }
+            });
         });
 
         if (PendulumConfig.INSTANCE.mcpEnabled.getValue()) {

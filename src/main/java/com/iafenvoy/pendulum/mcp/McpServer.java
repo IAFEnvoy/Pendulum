@@ -42,7 +42,7 @@ public final class McpServer {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new Gson();
     private static final String SERVER_NAME = "Pendulum MCP";
-    private static final String SERVER_VERSION = "1.0.0";
+    private static final String SERVER_VERSION = "1.1.0";
 
     private static final McpServer INSTANCE = new McpServer();
 
@@ -176,7 +176,7 @@ public final class McpServer {
         return switch (method) {
             case "initialize" -> this.handleInitialize(id, req);
             case "notifications/initialized" -> null; // No response for notifications
-            case "tools/list" -> this.handleToolsList(id);
+            case "tools/list" -> ScriptEngine.submitToGameThread(() -> this.handleToolsList(id));
             case "tools/call" -> this.handleToolsCall(id, req);
             default -> jsonRpcError(id, -32601, "Method not found: " + method);
         };
@@ -435,18 +435,18 @@ public final class McpServer {
                     if (target.isEmpty()) {
                         content.add(textContent("Error: 'target' is required."));
                     } else {
-                        String r = clickWidgetByText(target);
+                        String r = ScriptEngine.submitToGameThread(() -> clickWidgetByText(target));
                         content.add(textContent(r));
                     }
                     break;
                 }
                 case "gui/enumerateWidgets": {
-                    String json = enumerateAllWidgetsJson();
+                    String json = ScriptEngine.submitToGameThread(McpServer::enumerateAllWidgetsJson);
                     content.add(textContent(json != null ? json : "No GUI open."));
                     break;
                 }
                 case "gui/guiElements": {
-                    String json = getGuiElementsJson();
+                    String json = ScriptEngine.submitToGameThread(McpServer::getGuiElementsJson);
                     content.add(textContent(json != null ? json : "No GUI open."));
                     break;
                 }
@@ -520,7 +520,7 @@ public final class McpServer {
                     if (methodName.isEmpty()) {
                         content.add(textContent("Error: 'method' is required."));
                     } else {
-                        String res = callScreenMethod(methodName);
+                        String res = ScriptEngine.submitToGameThread(() -> callScreenMethod(methodName));
                         content.add(textContent(res));
                     }
                     break;
@@ -530,7 +530,7 @@ public final class McpServer {
                     if (itemText.isEmpty()) {
                         content.add(textContent("Error: 'text' is required."));
                     } else {
-                        String res = selectListItem(itemText);
+                        String res = ScriptEngine.submitToGameThread(() -> selectListItem(itemText));
                         content.add(textContent(res));
                     }
                     break;
@@ -685,6 +685,11 @@ public final class McpServer {
     }
 
     private static String takeScreenshotB64() {
+        // Window and framebuffer state are render-thread only (same rule as input injection).
+        return ScriptEngine.submitToGameThread(McpServer::captureScreenshotB64);
+    }
+
+    private static String captureScreenshotB64() {
         try {
             Minecraft mc = Minecraft.getInstance();
             int w = mc.getWindow().getWidth();

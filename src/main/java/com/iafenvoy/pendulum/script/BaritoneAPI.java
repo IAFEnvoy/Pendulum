@@ -739,9 +739,11 @@ public final class BaritoneAPI {
                 §eWaypoints:§r waypointSave, waypointList, waypointDelete  Home:§r sethome, home
                 §eTools:§r repack, gc, render, reloadAll, saveAll
                 §cTip: Use Baritone (br.*) whenever possible! Path planning, mining, and building are far more efficient than per-block operations.""";
-        if (Minecraft.getInstance().player != null) {
-            Minecraft.getInstance().player.displayClientMessage(
-                    net.minecraft.network.chat.Component.literal(msg), false);
-        }
+        ScriptEngine.runOnGameThread(() -> {
+            if (Minecraft.getInstance().player != null) {
+                Minecraft.getInstance().player.displayClientMessage(
+                        net.minecraft.network.chat.Component.literal(msg), false);
+            }
+        });
     }
 }

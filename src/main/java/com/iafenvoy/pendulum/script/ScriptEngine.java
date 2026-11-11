@@ -180,6 +180,17 @@ public final class ScriptEngine {
     // ==================== Game Thread Task Submission ====================
 
     public static <T> T submitToGameThread(Supplier<T> task) {
+        // Already on the game thread (e.g. a queued task calling back into the API):
+        // run inline, otherwise waiting for the tick queue would deadlock the render thread.
+        if (Minecraft.getInstance().isSameThread()) {
+            try {
+                return task.get();
+            } catch (RuntimeException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw new RuntimeException(t);
+            }
+        }
         CompletableFuture<T> future = new CompletableFuture<>();
         getInstance().gameTasks.add(() -> {
             try {
@@ -209,6 +220,10 @@ public final class ScriptEngine {
      * fire-and-forget: enqueue without blocking; suitable for simple state sets like movement
      */
     public static void runOnGameThread(Runnable task) {
+        if (Minecraft.getInstance().isSameThread()) {
+            task.run();
+            return;
+        }
         getInstance().gameTasks.add(task);
     }
 

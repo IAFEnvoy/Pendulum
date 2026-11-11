@@ -86,8 +86,11 @@ public final class PendulumCommand {
     }
 
     private static void display(Component message) {
-        if (Minecraft.getInstance().player != null) {
-            Minecraft.getInstance().player.displayClientMessage(message, false);
-        }
+        // May be called from the MCP thread (mcp.start callback) — chat access belongs on the game thread.
+        ScriptEngine.runOnGameThread(() -> {
+            if (Minecraft.getInstance().player != null) {
+                Minecraft.getInstance().player.displayClientMessage(message, false);
+            }
+        });
     }
 }
